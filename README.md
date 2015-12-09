@@ -1,3 +1,9 @@
+Requirements
+------------
+
+1. multimap
+2. numbers
+
 (n k) = 2^n / sqrt(1/2*n*pi) * exp(-(k-(n/2))^2 / n/2)
 
 ////////////////////

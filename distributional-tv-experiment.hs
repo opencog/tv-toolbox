@@ -44,7 +44,7 @@ main = do
     -- k = read k_str :: Integer
     -- Directly enter them
     sA = 0.5
-    nA = 50000
+    nA = 500
     sB = 0.3
     nB = 200
     sC = 0.2
@@ -53,7 +53,7 @@ main = do
     nAB = 400
     sBC = 0.4
     nBC = 500
-    k = 10
+    k = 30
     hres = 100000                  -- number of bins in the histogram
 
   -- Calculate corresponding counts
@@ -74,40 +74,44 @@ main = do
     hAB = genHist sAB nAB k
     hBC = genHist sBC nBC k
 
-  putStrLn (format "hA = {0}" [(show . Data.Map.toList) hA])
+  putStrLn ("hA: " ++ (showHist hA))
   plotPath [XRange (0.0, 1.0)] (toPath hA)
 
-  putStrLn (format "hB = {0}" [(show . Data.Map.toList) hB])
+  putStrLn ("hB: " ++ (showHist hB))
   plotPath [XRange (0.0, 1.0)] (toPath hB)
 
-  putStrLn (format "hC = {0}" [(show . Data.Map.toList) hC])
+  putStrLn ("hC: " ++ (showHist hC))
   plotPath [XRange (0.0, 1.0)] (toPath hC)
 
-  putStrLn (format "hAB = {0}" [(show . Data.Map.toList) hAB])
+  putStrLn ("hAB: " ++ (showHist hAB))
   plotPath [XRange (0.0, 1.0)] (toPath hAB)
 
-  putStrLn (format "hBC = {0}" [(show . Data.Map.toList) hBC])
+  putStrLn ("hBC: " ++ (showHist hBC))
   plotPath [XRange (0.0, 1.0)] (toPath hBC)
-
-  threadDelay 10000000
 
   -- Compute the result of deduction
   let
     hAC = deduction hA hB hC hAB hBC
-  putStrLn (format "hAC = {0}" [(show . Data.Map.toList) hAC])
-  putStrLn (format "hAC total = {0}, size = {1}"
-            [show (histSum hAC), (show . Data.Map.size) hAC])
+  putStrLn ("hAC: " ++ (showHist hAC))
 
   -- Normalize the distribution
   let
     hACnorm = normalize hAC
-  putStrLn (format "hACnorm = {0}" [(show . Data.Map.toList) hACnorm])
-  putStrLn (format "hACnorm total = {0}, size = {1}"
-            [show (histSum hACnorm), (show . Data.Map.size) hACnorm])
+  putStrLn ("hACnorm: " ++ (showHist hACnorm))
+
+  -- Plot the distribution
+  plotPath [XRange (0.0, 1.0)] (toPath hACnorm)
+  plotPath [] (toPath hACnorm)
+
+  threadDelay 100000000
+
+showHist :: Hist -> String
+showHist h = format "size = {0}, total = {1}, data = {2}"
+             [show (size h), show (histSum h), show (Data.Map.toList h)]
 
 -- Turn a histogram into a plotable path
-toPath h = [(realToFrac s :: Double, realToFrac p :: Double)
-            | (s, p) <- (Data.Map.toList h)]
+toPath :: Hist -> [(Double, Double)]
+toPath h = [(realToFrac s, realToFrac p) | (s, p) <- (Data.Map.toList h)]
 
 -- Using the fact that c = n / (n+k) we infer that n = c*k / (1-c)
 confidenceToCount :: MyFloat -> Integer -> Integer
@@ -208,6 +212,6 @@ deduction hA hB hC hAB hBC = toHist dAC
                            (sC, pC) <- (Data.Map.toList hC),
                            (sAB, pAB) <- (Data.Map.toList hAB),
                            (sBC, pBC) <- (Data.Map.toList hBC),
+                           let pAC = pA * pB * pC * pAB * pBC, 0.000001 < pAC,
                            deductionConsistency sA sB sAB,
-                           deductionConsistency sB sC sBC,
-                           let pAC = pA * pB * pC * pAB * pBC ]
+                           deductionConsistency sB sC sBC ]

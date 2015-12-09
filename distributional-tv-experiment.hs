@@ -8,9 +8,8 @@ import Data.Number.BigFloat (BigFloat, Prec10, Prec50)
 import Math.Combinatorics.Exact.Binomial (choose)
 import System.Environment (getArgs)
 import Text.Format (format)
-import Data.MultiMap (MultiMap, fromList, toList, insert, toMap,
-                      mapKeys, foldr, foldrWithKey, map, size, empty)
-import Data.Map (Map, map, toList)
+import Data.MultiMap (MultiMap, fromList, toMap, mapKeys)
+import Data.Map (Map, map, toList, foldr, size)
 import Debug.Trace (trace)
 import Graphics.Gnuplot.Simple (plotPath, Attribute(XRange))
 
@@ -54,7 +53,7 @@ main = do
     nAB = 400
     sBC = 0.4
     nBC = 500
-    k = 1000
+    k = 10
     hres = 100000                  -- number of bins in the histogram
 
   -- Calculate corresponding counts
@@ -92,22 +91,19 @@ main = do
 
   threadDelay 10000000
 
-  -- putStrLn (format "dA = {0}\ndB = {1}\ndC = {2}\ndAB = {3}\ndBC = {4}" (Prelude.map (show . toList) [dA, dB, dC, dAB, dBC]))
+  -- Compute the result of deduction
+  let
+    hAC = deduction hA hB hC hAB hBC
+  putStrLn (format "hAC = {0}" [(show . Data.Map.toList) hAC])
+  putStrLn (format "hAC total = {0}, size = {1}"
+            [show (histSum hAC), (show . Data.Map.size) hAC])
 
-  -- threadDelay 10000000
-  -- -- Compute the result of deduction
-  -- let
-  --   dAC = deduction dA dB dC dAB dBC
-  -- putStrLn (format "dAC = {0}" [show (toList dAC)])
-  -- putStrLn (format "dAC total = {0}, size = {1}" [show (distSum dAC),
-  --                                                 show (Data.MultiMap.size dAC)])
-
-  -- -- Normalize the distribution
-  -- let
-  --   dACnorm = normalize dAC
-  -- putStrLn (format "dACnorm = {0}" [show (toList dACnorm)])
-  -- putStrLn (format "dACnorm total = {0}, size = {1}"
-  --           [show (distSum dACnorm), show (Data.MultiMap.size dACnorm)])
+  -- Normalize the distribution
+  let
+    hACnorm = normalize hAC
+  putStrLn (format "hACnorm = {0}" [(show . Data.Map.toList) hACnorm])
+  putStrLn (format "hACnorm total = {0}, size = {1}"
+            [show (histSum hACnorm), (show . Data.Map.size) hACnorm])
 
 -- Turn a histogram into a plotable path
 toPath h = [(realToFrac s :: Double, realToFrac p :: Double)
@@ -123,8 +119,8 @@ strengthToCount s n = floor (s * (fromInteger n))
 
 -- Return the sum of the probabilities of the distribution. It should
 -- normally be equal to 1.0
-distSum :: Dist -> MyFloat
-distSum d = Data.MultiMap.foldr (+) 0 d
+histSum :: Hist -> MyFloat
+histSum d = Data.Map.foldr (+) 0 d
 
 -- Given a simple TV <s, c> and a lookahead k, generate the
 -- corresponding distribution.
@@ -137,10 +133,10 @@ genDist s n k =
 genHist :: MyFloat -> Integer -> Integer -> Hist
 genHist s n k = toHist (genDist s n k)
 
--- Normalize a distribution so that it sums up to 1
-normalize :: Dist -> Dist
-normalize d = Data.MultiMap.map (\x -> x / ds) d
-  where ds = distSum d
+-- Normalize a histogram so that it sums up to 1
+normalize :: Hist -> Hist
+normalize h = Data.Map.map (\x -> x / hs) h
+  where hs = histSum h
 
 -- Return the nearest (lower) bin corresponding to a strength
 bin :: Integer -> MyFloat -> MyFloat
@@ -204,13 +200,14 @@ deductionFormula sA sB sC sAB sBC =
     --        (Prelude.map show [sA, sB, sC, sAB, sBC, result]))
     result
 
-deduction :: Dist-> Dist -> Dist -> Dist -> Dist -> Dist
-deduction dA dB dC dAB dBC =
-  fromList [ (deductionFormula sA sB sC sAB sBC, pA * pB * pC * pAB * pBC)  |
-             (sA, pA) <- (Data.MultiMap.toList dA),
-             (sB, pB) <- (Data.MultiMap.toList dB),
-             (sC, pC) <- (Data.MultiMap.toList dC),
-             (sAB, pAB) <- (Data.MultiMap.toList dAB),
-             (sBC, pBC) <- (Data.MultiMap.toList dBC),
-             deductionConsistency sA sB sAB,
-             deductionConsistency sB sC sBC]
+deduction :: Hist-> Hist -> Hist -> Hist -> Hist -> Hist
+deduction hA hB hC hAB hBC = toHist dAC
+    where dAC = fromList [ (deductionFormula sA sB sC sAB sBC, pAC) |
+                           (sA, pA) <- (Data.Map.toList hA),
+                           (sB, pB) <- (Data.Map.toList hB),
+                           (sC, pC) <- (Data.Map.toList hC),
+                           (sAB, pAB) <- (Data.Map.toList hAB),
+                           (sBC, pBC) <- (Data.Map.toList hBC),
+                           deductionConsistency sA sB sAB,
+                           deductionConsistency sB sC sBC,
+                           let pAC = pA * pB * pC * pAB * pBC ]

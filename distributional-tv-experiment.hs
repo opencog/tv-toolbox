@@ -3,15 +3,19 @@
 import Control.Concurrent (threadDelay)
 import Math.Gamma (gamma)
 import Data.Ratio ((%))
-import Data.Number.CReal (CReal)
 import Data.Number.BigFloat (BigFloat, Prec10, Prec50)
 import Math.Combinatorics.Exact.Binomial (choose)
 import System.Environment (getArgs)
 import Text.Format (format)
-import Data.MultiMap (MultiMap, fromList, toMap, mapKeys)
-import Data.Map (Map, map, toList, foldr, size)
+import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
+import Data.Map (Map, map, toList, foldr, size,
+                 foldWithKey, empty, insertWith, filter)
 import Debug.Trace (trace)
-import Graphics.Gnuplot.Simple (plotPath, Attribute(XRange))
+import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
+                                Attribute(Title, XLabel, YLabel, XRange),
+                                PlotStyle, defaultStyle,
+                                lineSpec, LineSpec(CustomStyle),
+                                LineAttr(LineTitle))
 
 -- type MyFloat = Float
 type MyFloat = Double
@@ -24,6 +28,12 @@ type Dist = MultiMap MyFloat MyFloat
 
 -- Like Dist but each strength is unique
 type Hist = Map MyFloat MyFloat
+
+defaultK :: Integer
+defaultK = 10000
+
+defaultResolution :: Integer
+defaultResolution = 150
 
 main :: IO ()
 main = do
@@ -48,13 +58,13 @@ main = do
     sB = 0.3
     nB = 200
     sC = 0.2
-    nC = 300
-    sAB = 0.3
+    nC = 10
+    sAB = 0.8
     nAB = 400
-    sBC = 0.4
+    sBC = 0.9
     nBC = 500
-    k = 30
-    hres = 100000                  -- number of bins in the histogram
+    k = defaultK
+    resolution = defaultResolution       -- number of bins in the histogram
 
   -- Calculate corresponding counts
   let
@@ -68,30 +78,30 @@ main = do
 
   -- Generate corresponding distributions
   let
-    hA = genHist sA nA k
-    hB = genHist sB nB k
-    hC = genHist sC nC k
-    hAB = genHist sAB nAB k
-    hBC = genHist sBC nBC k
+    trimDis = (trim 1e-10) . (discretize resolution)
+    hA = trimDis (genHist sA nA k)
+    hB = trimDis (genHist sB nB k)
+    hC = trimDis (genHist sC nC k)
+    hAB = trimDis (genHist sAB nAB k)
+    hBC = trimDis (genHist sBC nBC k)
 
   putStrLn ("hA: " ++ (showHist hA))
-  plotPath [XRange (0.0, 1.0)] (toPath hA)
-
   putStrLn ("hB: " ++ (showHist hB))
-  plotPath [XRange (0.0, 1.0)] (toPath hB)
-
   putStrLn ("hC: " ++ (showHist hC))
-  plotPath [XRange (0.0, 1.0)] (toPath hC)
-
   putStrLn ("hAB: " ++ (showHist hAB))
-  plotPath [XRange (0.0, 1.0)] (toPath hAB)
-
   putStrLn ("hBC: " ++ (showHist hBC))
-  plotPath [XRange (0.0, 1.0)] (toPath hBC)
+
+  let lineTitle name strength count =
+          format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
+  plotHists [(lineTitle "A" sA nA, hA),
+             (lineTitle "B" sB nB, hB),
+             (lineTitle "C" sC nC, hC),
+             (lineTitle "AB" sAB nAB, hAB),
+             (lineTitle "BC" sBC nBC, hBC)]
 
   -- Compute the result of deduction
   let
-    hAC = deduction hA hB hC hAB hBC
+    hAC = trimDis (deduction hA hB hC hAB hBC)
   putStrLn ("hAC: " ++ (showHist hAC))
 
   -- Normalize the distribution
@@ -100,14 +110,46 @@ main = do
   putStrLn ("hACnorm: " ++ (showHist hACnorm))
 
   -- Plot the distribution
-  plotPath [XRange (0.0, 1.0)] (toPath hACnorm)
-  plotPath [] (toPath hACnorm)
+  plotHist "AC.tv" hACnorm
+  plotHistZoom "AC - zoom" hACnorm
 
   threadDelay 100000000
 
 showHist :: Hist -> String
 showHist h = format "size = {0}, total = {1}, data = {2}"
              [show (size h), show (histSum h), show (Data.Map.toList h)]
+
+defaultTitle :: Attribute
+defaultTitle = Title (format "Simple TV distribution (k={0})" [show defaultK])
+
+-- Plot a distribution, provided its name, xrange and histogram
+plotHistRange :: String -> Double -> Double -> Hist -> IO ()
+plotHistRange name l u h =
+    plotPathStyle [defaultTitle, XLabel "Strength", YLabel "Probability", XRange (l, u)]
+                  (defaultStyle {lineSpec = CustomStyle [LineTitle name]})
+                  (toPath h)
+
+-- Same as plotHistsRange but plot several histograms
+plotHistsRange :: [(String, Hist)] -> Double -> Double -> IO ()
+plotHistsRange nhs l u =
+    plotPathsStyle [defaultTitle, XLabel "Strength", YLabel "Probability", XRange (l, u)]
+                   (Prelude.map fmt nhs)
+        where fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]}, toPath h)
+
+-- Same as plotHistRange but the xrange is (0.0, 1.0)
+plotHist :: String -> Hist -> IO ()
+plotHist name h = plotHistRange name 0.0 1.0 h
+
+-- Same as plotHists for plots several histograms
+plotHists :: [(String, Hist)] -> IO ()
+plotHists nhs = plotHistsRange nhs 0.0 1.0
+
+-- Same as plotHistRange but without specifying the xrange
+plotHistZoom :: String -> Hist -> IO ()
+plotHistZoom name h =
+    plotPathStyle [defaultTitle, XLabel "Strength", YLabel "Probabilitiy"]
+                  (defaultStyle {lineSpec = CustomStyle [LineTitle name]})
+                  (toPath h)
 
 -- Turn a histogram into a plotable path
 toPath :: Hist -> [(Double, Double)]
@@ -151,9 +193,21 @@ bin n s = fromRational ((floor (s * (fromInteger n))) % n)
 toHist :: Dist -> Hist
 toHist d = Data.Map.map sum (toMap d)
 
+-- Turn a histogram into a distribution
+toDist :: Hist -> Dist
+toDist = Data.MultiMap.fromList . Data.Map.toList
+
 -- Turn a distribution into a histogram of n bins
-toBinHist :: Dist -> Integer -> Hist
-toBinHist d n = toHist (mapKeys (bin n) d)
+toBinHist :: Integer -> Dist -> Hist
+toBinHist n d = toHist (mapKeys_fix (bin n) d)
+
+-- Discretize a distribution in n bins
+discretize :: Integer -> Hist -> Hist
+discretize n h = toHist (mapKeys_fix (bin n) (toDist h))
+
+-- Discard probabilities under a given value
+trim :: Double -> Hist -> Hist
+trim e h = Data.Map.filter ((<=) e) h
 
 -- P(x+X successes in n+k trials | x successes in n trials)
 prob :: Integer -> Integer -> Integer -> Integer -> MyFloat
@@ -212,6 +266,11 @@ deduction hA hB hC hAB hBC = toHist dAC
                            (sC, pC) <- (Data.Map.toList hC),
                            (sAB, pAB) <- (Data.Map.toList hAB),
                            (sBC, pBC) <- (Data.Map.toList hBC),
-                           let pAC = pA * pB * pC * pAB * pBC, 0.000001 < pAC,
+                           let pAC = pA * pB * pC * pAB * pBC, 1e-10 < pAC,
                            deductionConsistency sA sB sAB,
                            deductionConsistency sB sC sBC ]
+
+-- MultiMap mapKeys fix
+mapKeys_fix f m = fromMap (Data.Map.foldWithKey f' empty m')
+    where m' = toMap m
+          f' k a b = insertWith (++) (f k) a b

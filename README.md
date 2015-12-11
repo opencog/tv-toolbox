@@ -1,20 +1,37 @@
+Overview
+--------
+
+Tool box for experimenting with TV types.
+
 Requirements
 ------------
 
 1. multimap
 2. numbers
+3. TODO
 
+Maxima
+------
+
+TODO
+
+```
 (n k) = 2^n / sqrt(1/2*n*pi) * exp(-(k-(n/2))^2 / n/2)
+```
 
+```c++
 ////////////////////
 // Using binomial //
 ////////////////////
 
 // P(x+X successes in n+k trials | x successes in n trials)
+```
 
+```maxima
 P(n, x, k, X) := ((n+1)*binomial(k, X)*binomial(n, x))
               / ((k+n+1)*binomial(k+n, X+x));
-
+```
+```c++
 // Using p=x/n and s=(x+X)/(n+k)
 //
 // p = x/n
@@ -26,7 +43,9 @@ P(n, x, k, X) := ((n+1)*binomial(k, X)*binomial(n, x))
 // s(X) = (p*n+X) / (n+k)
 // s(X+1) = (p*n+X+1) / (n+k)
 // s(X) - s(X+1) = 1/(n+k)
+```
 
+```maxima
 P_prob(n, p, k, s) := ((n+1)*binomial(k, s*(n+k) - p*n)*binomial(n, p*n))
                         / ((k+n+1)*binomial(k+n, s*(n+k)));
 
@@ -34,20 +53,28 @@ pdf_k(n, p, k, s) := P_prob(n, p, k, s) * (n+k);
 pdf(n, p, s) = lim k->inf pdf_k(n, p, k, s)
 
 limit(pdf(n, p, k, s), k, inf);
+```
 
+```c++
 //////////////////////////////////
 // Using binomial approximation //
 //////////////////////////////////
 
 // Shitty: when n is high and k is low, the approximation is really bad
+```
+```maxima
 binomial_approx(n, k) := 2^n / sqrt(1/2*n*%pi) * %e^(-(k-(n/2))^2/(n/2));
 P_approx(n, x, k, X) := ((n+1)*binomial_approx(k, X)*binomial_approx(n, x))
                   / ((k+n+1)*binomial_approx(k+n, X+x));
+```
 
+```c++
 /////////////////////////
 // Using beta function //
 /////////////////////////
+```
 
+```maxima
 binomial_beta(n, k) := 1 / ((n+1) * beta(n-k+1, k+1));
 P_beta(n, x, k, X) := ((n+1)*binomial_beta(k, X)*binomial_beta(n, x))
                   / ((k+n+1)*binomial_beta(k+n, X+x));
@@ -77,4 +104,4 @@ plot3d(pdf_beta_k(n, 0.3, 500, s), [s, 0, 1], [n, 1, 500], [grid, 100, 100], [z,
 
 // Typical b
 b = 0.9
-
+```

@@ -2,13 +2,15 @@
 
 import Control.Concurrent (threadDelay)
 import Math.Gamma (gamma)
+import Data.Maybe (fromJust)
 import Data.Ratio ((%))
 import Data.Number.BigFloat (BigFloat, Prec10, Prec50)
+import Data.Function.Memoize (memoize)
 import Math.Combinatorics.Exact.Binomial (choose)
 import System.Environment (getArgs)
 import Text.Format (format)
 import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
-import Data.Map (Map, map, toList, foldr, size,
+import Data.Map (Map, map, toList, foldr, size, lookup, unionWith,
                  foldWithKey, empty, insertWith, filter)
 import Debug.Trace (trace)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
@@ -16,6 +18,10 @@ import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
                                 PlotStyle, defaultStyle,
                                 lineSpec, LineSpec(CustomStyle),
                                 LineAttr(LineTitle))
+
+-----------
+-- Types --
+-----------
 
 -- type MyFloat = Float
 type MyFloat = Double
@@ -29,91 +35,19 @@ type Dist = MultiMap MyFloat MyFloat
 -- Like Dist but each strength is unique
 type Hist = Map MyFloat MyFloat
 
+---------------
+-- Constants --
+---------------
+
 defaultK :: Integer
-defaultK = 10000
+defaultK = 5000
 
 defaultResolution :: Integer
-defaultResolution = 150
+defaultResolution = 100
 
-main :: IO ()
-main = do
-  -- Parse arguments
-  -- [sA_str, cA_str, sB_str, cB_str, sC_str, cC_str,
-  --  sAB_str, cAB_str, sBC_str, cBC_str, k_str] <- getArgs
-  let
-    -- sA = read sA_str :: MyFloat
-    -- cA = read cA_str :: MyFloat
-    -- sB = read sB_str :: MyFloat
-    -- cB = read cB_str :: MyFloat
-    -- sC = read sC_str :: MyFloat
-    -- cC = read cC_str :: MyFloat
-    -- sAB = read sAB_str :: MyFloat
-    -- cAB = read cAB_str :: MyFloat
-    -- sBC = read sBC_str :: MyFloat
-    -- cBC = read cBC_str :: MyFloat
-    -- k = read k_str :: Integer
-    -- Directly enter them
-    sA = 0.5
-    nA = 500
-    sB = 0.3
-    nB = 200
-    sC = 0.2
-    nC = 10
-    sAB = 0.8
-    nAB = 400
-    sBC = 0.9
-    nBC = 500
-    k = defaultK
-    resolution = defaultResolution       -- number of bins in the histogram
-
-  -- Calculate corresponding counts
-  let
-    xA = strengthToCount sA nA
-    xB = strengthToCount sB nB
-    xC = strengthToCount sC nC
-    xAB = strengthToCount sAB nAB
-    xBC = strengthToCount sBC nBC
-  putStrLn (format "xA = {0}, xB = {1}, xC = {2}, xAB = {3}, xBC = {4}"
-            (Prelude.map show [xA, xB, xC, xAB, xBC]))
-
-  -- Generate corresponding distributions
-  let
-    trimDis = (trim 1e-10) . (discretize resolution)
-    hA = trimDis (genHist sA nA k)
-    hB = trimDis (genHist sB nB k)
-    hC = trimDis (genHist sC nC k)
-    hAB = trimDis (genHist sAB nAB k)
-    hBC = trimDis (genHist sBC nBC k)
-
-  putStrLn ("hA: " ++ (showHist hA))
-  putStrLn ("hB: " ++ (showHist hB))
-  putStrLn ("hC: " ++ (showHist hC))
-  putStrLn ("hAB: " ++ (showHist hAB))
-  putStrLn ("hBC: " ++ (showHist hBC))
-
-  let lineTitle name strength count =
-          format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
-  plotHists [(lineTitle "A" sA nA, hA),
-             (lineTitle "B" sB nB, hB),
-             (lineTitle "C" sC nC, hC),
-             (lineTitle "AB" sAB nAB, hAB),
-             (lineTitle "BC" sBC nBC, hBC)]
-
-  -- Compute the result of deduction
-  let
-    hAC = trimDis (deduction hA hB hC hAB hBC)
-  putStrLn ("hAC: " ++ (showHist hAC))
-
-  -- Normalize the distribution
-  let
-    hACnorm = normalize hAC
-  putStrLn ("hACnorm: " ++ (showHist hACnorm))
-
-  -- Plot the distribution
-  plotHist "AC.tv" hACnorm
-  plotHistZoom "AC - zoom" hACnorm
-
-  threadDelay 100000000
+---------------
+-- Functions --
+---------------
 
 showHist :: Hist -> String
 showHist h = format "size = {0}, total = {1}, data = {2}"
@@ -122,34 +56,16 @@ showHist h = format "size = {0}, total = {1}, data = {2}"
 defaultTitle :: Attribute
 defaultTitle = Title (format "Simple TV distribution (k={0})" [show defaultK])
 
--- Plot a distribution, provided its name, xrange and histogram
-plotHistRange :: String -> Double -> Double -> Hist -> IO ()
-plotHistRange name l u h =
-    plotPathStyle [defaultTitle, XLabel "Strength", YLabel "Probability", XRange (l, u)]
-                  (defaultStyle {lineSpec = CustomStyle [LineTitle name]})
-                  (toPath h)
+-- Plot distributions, specifying whether to enable zoom or not.
+plotHists :: Bool -> [(String, Hist)] -> IO ()
+plotHists zoom nhs = plotPathsStyle attributes (Prelude.map fmt nhs)
+    where attributes = [defaultTitle, XLabel "Strength", YLabel "Probability"]
+                       ++ if zoom then [] else [XRange (0.0, 1.0)]
+          fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]}, toPath h)
 
--- Same as plotHistsRange but plot several histograms
-plotHistsRange :: [(String, Hist)] -> Double -> Double -> IO ()
-plotHistsRange nhs l u =
-    plotPathsStyle [defaultTitle, XLabel "Strength", YLabel "Probability", XRange (l, u)]
-                   (Prelude.map fmt nhs)
-        where fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]}, toPath h)
-
--- Same as plotHistRange but the xrange is (0.0, 1.0)
-plotHist :: String -> Hist -> IO ()
-plotHist name h = plotHistRange name 0.0 1.0 h
-
--- Same as plotHists for plots several histograms
-plotHists :: [(String, Hist)] -> IO ()
-plotHists nhs = plotHistsRange nhs 0.0 1.0
-
--- Same as plotHistRange but without specifying the xrange
-plotHistZoom :: String -> Hist -> IO ()
-plotHistZoom name h =
-    plotPathStyle [defaultTitle, XLabel "Strength", YLabel "Probabilitiy"]
-                  (defaultStyle {lineSpec = CustomStyle [LineTitle name]})
-                  (toPath h)
+-- Like plotHists but plot only one distribution
+plotHist :: Bool -> String -> Hist -> IO ()
+plotHist zoom name h = plotHists zoom [(name, h)]
 
 -- Turn a histogram into a plotable path
 toPath :: Hist -> [(Double, Double)]
@@ -157,11 +73,11 @@ toPath h = [(realToFrac s, realToFrac p) | (s, p) <- (Data.Map.toList h)]
 
 -- Using the fact that c = n / (n+k) we infer that n = c*k / (1-c)
 confidenceToCount :: MyFloat -> Integer -> Integer
-confidenceToCount c k = floor (c*(fromInteger k) / (1 - c))
+confidenceToCount c k = round (c*(fromInteger k) / (1 - c))
 
 -- x = s*n
 strengthToCount :: MyFloat -> Integer -> Integer
-strengthToCount s n = floor (s * (fromInteger n))
+strengthToCount s n = round (s * (fromInteger n))
 
 -- Return the sum of the probabilities of the distribution. It should
 -- normally be equal to 1.0
@@ -179,10 +95,21 @@ genDist s n k =
 genHist :: MyFloat -> Integer -> Integer -> Hist
 genHist s n k = toHist (genDist s n k)
 
+-- Multiply the probabilities of a distribution by a given value
+scale :: MyFloat -> Hist -> Hist
+scale c h = Data.Map.map ((*) c) h
+
 -- Normalize a histogram so that it sums up to 1
 normalize :: Hist -> Hist
-normalize h = Data.Map.map (\x -> x / hs) h
-  where hs = histSum h
+normalize h = scale (1.0 / (histSum h)) h
+
+-- Add 2 distributions
+add :: Hist -> Hist -> Hist
+add = unionWith (+)
+
+-- Compute the average of 2 distributions, (hP + hQ) / 2
+average :: Hist -> Hist -> Hist
+average hP hQ = scale 0.5 (add hP hQ)
 
 -- Return the nearest (lower) bin corresponding to a strength
 bin :: Integer -> MyFloat -> MyFloat
@@ -258,8 +185,8 @@ deductionFormula sA sB sC sAB sBC =
     --        (Prelude.map show [sA, sB, sC, sAB, sBC, result]))
     result
 
-deduction :: Hist-> Hist -> Hist -> Hist -> Hist -> Hist
-deduction hA hB hC hAB hBC = toHist dAC
+fullDeduction :: Hist-> Hist -> Hist -> Hist -> Hist -> Hist
+fullDeduction hA hB hC hAB hBC = toHist dAC
     where dAC = fromList [ (deductionFormula sA sB sC sAB sBC, pAC) |
                            (sA, pA) <- (Data.Map.toList hA),
                            (sB, pB) <- (Data.Map.toList hB),
@@ -270,7 +197,157 @@ deduction hA hB hC hAB hBC = toHist dAC
                            deductionConsistency sA sB sAB,
                            deductionConsistency sB sC sBC ]
 
+-- Perform Deduction by sampling m times the distributions
+monteCarloDeduction :: Integer -> Hist-> Hist -> Hist -> Hist -> Hist -> Hist
+monteCarloDeduction m hA hB hC hAB hBC = undefined -- TODO
+
+
+
 -- MultiMap mapKeys fix
-mapKeys_fix f m = fromMap (Data.Map.foldWithKey f' empty m')
+mapKeys_fix f m = fromMap (foldWithKey f' empty m')
     where m' = toMap m
           f' k a b = insertWith (++) (f k) a b
+
+-- Base 2 log
+log2 = logBase 2
+
+-- Compute the Kullback-Leibler divergence from hP to hQ. It assumes
+-- that hQ has the same support as hP or greater, and that their
+-- probabilities are non-null.
+kld :: Hist -> Hist -> MyFloat
+kld hP hQ = sum [p * (log2 (p / (hQp s))) | (s, p) <- toList hP]
+    where hQp s = fromJust (Data.Map.lookup s hQ)
+
+-- Compute the Jensen-Shannon divergence between hP and hQ. hM must be
+-- the average distribution between hP and hQ.
+jsd :: Hist -> Hist -> Hist -> MyFloat
+jsd hP hQ hM = ((kld hP hM) + (kld hQ hM)) / 2.0
+
+-- Compute the square root of the Jensen-Shannon divergence between hP
+-- and hQ (to be a true metric). Generate hM on the fly as well.
+sqrtJsd :: Hist -> Hist -> MyFloat
+sqrtJsd hP hQ = sqrt (jsd hP hQ (average hP hQ))
+
+-- Compute the mean of a distribution.
+mean :: Hist -> MyFloat
+mean = foldWithKey (\s p m -> m + s*p) 0.0
+
+-- Find the middle between 2 integers
+middle :: Integer -> Integer -> Integer
+middle l u = div (l + u) 2
+
+-- Find the Integer value x so that f(x) is minimized, assuming x is
+-- in [l, u], and given an initial guess. It is strongly adviced to
+-- memoize f beforehand.
+optimize :: (Integer -> MyFloat) -> Integer -> Integer -> Integer -> Integer
+optimize f l u m | m == l && m == u = m
+                 | m == u = if f (m-1) >= f m then m
+                            else optimize' f l (m-1) (middle l (m-1))
+                 | m == l = if f m <= f (m+1) then m
+                            else optimize' f (m+1) u (middle (m+1) u)
+                 | otherwise = if f (m-1) >= f m && f m <= f (m+1) then m
+                               else if (f (m+1)) - (f (m-1)) < 0
+                                    then optimize' f (m+1) u (middle (m+1) u)
+                                    else optimize' f l (m-1) (middle l (m-1))
+optimize' f l u m = trace (format "optimize f {0} {1} {2} = {3}"
+                                  (Prelude.map show [l, u, m, result]))
+                    result where result = optimize f l u m
+
+----------
+-- Main --
+----------
+
+main :: IO ()
+main = do
+  -- Parse arguments
+  -- [sA_str, cA_str, sB_str, cB_str, sC_str, cC_str,
+  --  sAB_str, cAB_str, sBC_str, cBC_str, k_str] <- getArgs
+  let
+    -- sA = read sA_str :: MyFloat
+    -- cA = read cA_str :: MyFloat
+    -- sB = read sB_str :: MyFloat
+    -- cB = read cB_str :: MyFloat
+    -- sC = read sC_str :: MyFloat
+    -- cC = read cC_str :: MyFloat
+    -- sAB = read sAB_str :: MyFloat
+    -- cAB = read cAB_str :: MyFloat
+    -- sBC = read sBC_str :: MyFloat
+    -- cBC = read cBC_str :: MyFloat
+    -- k = read k_str :: Integer
+    -- Directly enter them
+    sA = 0.5
+    nA = 500
+    sB = 0.3
+    nB = 200
+    sC = 0.2
+    nC = 10
+    sAB = 0.8
+    nAB = 400
+    sBC = 0.9
+    nBC = 500
+    k = defaultK
+    resolution = defaultResolution       -- number of bins in the histogram
+
+  -- Calculate corresponding counts
+  let
+    xA = strengthToCount sA nA
+    xB = strengthToCount sB nB
+    xC = strengthToCount sC nC
+    xAB = strengthToCount sAB nAB
+    xBC = strengthToCount sBC nBC
+  putStrLn (format "xA = {0}, xB = {1}, xC = {2}, xAB = {3}, xBC = {4}"
+            (Prelude.map show [xA, xB, xC, xAB, xBC]))
+
+  -- Generate corresponding distributions
+  let
+    trimDis = (trim 1e-10) . (discretize resolution)
+    hA = trimDis (genHist sA nA k)
+    hB = trimDis (genHist sB nB k)
+    hC = trimDis (genHist sC nC k)
+    hAB = trimDis (genHist sAB nAB k)
+    hBC = trimDis (genHist sBC nBC k)
+
+  putStrLn ("hA: " ++ (showHist hA))
+  putStrLn ("hB: " ++ (showHist hB))
+  putStrLn ("hC: " ++ (showHist hC))
+  putStrLn ("hAB: " ++ (showHist hAB))
+  putStrLn ("hBC: " ++ (showHist hBC))
+
+  let lineTitle name strength count =
+          format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
+  plotHists False [(lineTitle "A" sA nA, hA),
+                   (lineTitle "B" sB nB, hB),
+                   (lineTitle "C" sC nC, hC),
+                   (lineTitle "AB" sAB nAB, hAB),
+                   (lineTitle "BC" sBC nBC, hBC)]
+
+  -- Compute the result of deduction
+  let
+    hAC = trimDis (fullDeduction hA hB hC hAB hBC)
+  putStrLn ("hAC: " ++ (showHist hAC))
+
+  -- Normalize the distribution
+  let
+    hACnorm = normalize hAC
+  putStrLn ("hACnorm: " ++ (showHist hACnorm))
+
+  -- Find the resulting distribution count
+  let
+    sAC = mean hACnorm
+    countToSqrtJsd n = sqrtJsd (trimDis (genHist sAC n k)) hACnorm
+    memCountToSqrtJsd = memoize countToSqrtJsd
+    nACl = 0
+    nACu = nA + nB + nC + nAB + nBC
+    nACm = min nAB nBC
+    dsts = [(fromIntegral n, memCountToSqrtJsd n) | n <- [nACl..nACu]]
+    nAC = optimize' memCountToSqrtJsd nACl nACu nACm
+    hACstv = trimDis (genHist sAC nAC k)
+
+  -- Plot the distribution
+  putStrLn ("dsts = " ++ (show dsts))
+  plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt"]
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]}) dsts
+  plotHists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
+  plotHists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
+
+  threadDelay 1000000000

@@ -12,6 +12,7 @@ import Text.Format (format)
 import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
 import Data.Map (Map, map, toList, foldr, size, lookup, unionWith,
                  foldWithKey, empty, insertWith, filter)
+-- import Data.List (length)
 import Debug.Trace (trace)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
                                 Attribute(Title, XLabel, YLabel, XRange),
@@ -30,10 +31,10 @@ type MyFloat = Double
 
 -- Distribution type, maps a first order probability to its second
 -- order probability (or strength to probability).
-type Dist = MultiMap MyFloat MyFloat
+type MultiDist = MultiMap MyFloat MyFloat
 
--- Like Dist but each strength is unique
-type Hist = Map MyFloat MyFloat
+-- Like MultiDist but each strength is unique
+type Dist = Map MyFloat MyFloat
 
 ---------------
 -- Constants --
@@ -49,26 +50,26 @@ defaultResolution = 100
 -- Functions --
 ---------------
 
-showHist :: Hist -> String
-showHist h = format "size = {0}, total = {1}, data = {2}"
-             [show (size h), show (histSum h), show (Data.Map.toList h)]
+showDist :: Dist -> String
+showDist h = format "size = {0}, total = {1}, data = {2}"
+             [show (size h), show (distSum h), show (Data.Map.toList h)]
 
 defaultTitle :: Attribute
 defaultTitle = Title (format "Simple TV distribution (k={0})" [show defaultK])
 
 -- Plot distributions, specifying whether to enable zoom or not.
-plotHists :: Bool -> [(String, Hist)] -> IO ()
-plotHists zoom nhs = plotPathsStyle attributes (Prelude.map fmt nhs)
+plotDists :: Bool -> [(String, Dist)] -> IO ()
+plotDists zoom nhs = plotPathsStyle attributes (Prelude.map fmt nhs)
     where attributes = [defaultTitle, XLabel "Strength", YLabel "Probability"]
                        ++ if zoom then [] else [XRange (0.0, 1.0)]
           fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]}, toPath h)
 
--- Like plotHists but plot only one distribution
-plotHist :: Bool -> String -> Hist -> IO ()
-plotHist zoom name h = plotHists zoom [(name, h)]
+-- Like plotDists but plot only one distribution
+plotDist :: Bool -> String -> Dist -> IO ()
+plotDist zoom name h = plotDists zoom [(name, h)]
 
--- Turn a histogram into a plotable path
-toPath :: Hist -> [(Double, Double)]
+-- Turn a distribution into a plotable path
+toPath :: Dist -> [(Double, Double)]
 toPath h = [(realToFrac s, realToFrac p) | (s, p) <- (Data.Map.toList h)]
 
 -- Using the fact that c = n / (n+k) we infer that n = c*k / (1-c)
@@ -81,59 +82,55 @@ strengthToCount s n = round (s * (fromInteger n))
 
 -- Return the sum of the probabilities of the distribution. It should
 -- normally be equal to 1.0
-histSum :: Hist -> MyFloat
-histSum d = Data.Map.foldr (+) 0 d
+distSum :: Dist -> MyFloat
+distSum d = Data.Map.foldr (+) 0 d
 
 -- Given a simple TV <s, c> and a lookahead k, generate the
--- corresponding distribution.
-genDist :: MyFloat -> Integer -> Integer -> Dist
-genDist s n k =
+-- corresponding (multi)-distribution.
+genMultiDist :: MyFloat -> Integer -> Integer -> MultiDist
+genMultiDist s n k =
   fromList [(fromRational ((x+cx) % (n+k)), prob n x k cx) | cx <- [0..k]]
   where x = strengthToCount s n
 
--- Like genDist but output a histogram directly
-genHist :: MyFloat -> Integer -> Integer -> Hist
-genHist s n k = toHist (genDist s n k)
+-- Like genDist but output a distribution directly
+genDist :: MyFloat -> Integer -> Integer -> Dist
+genDist s n k = toDist (genMultiDist s n k)
 
 -- Multiply the probabilities of a distribution by a given value
-scale :: MyFloat -> Hist -> Hist
+scale :: MyFloat -> Dist -> Dist
 scale c h = Data.Map.map ((*) c) h
 
--- Normalize a histogram so that it sums up to 1
-normalize :: Hist -> Hist
-normalize h = scale (1.0 / (histSum h)) h
+-- Normalize a distribution so that it sums up to 1
+normalize :: Dist -> Dist
+normalize h = scale (1.0 / (distSum h)) h
 
 -- Add 2 distributions
-add :: Hist -> Hist -> Hist
+add :: Dist -> Dist -> Dist
 add = unionWith (+)
 
 -- Compute the average of 2 distributions, (hP + hQ) / 2
-average :: Hist -> Hist -> Hist
+average :: Dist -> Dist -> Dist
 average hP hQ = scale 0.5 (add hP hQ)
 
 -- Return the nearest (lower) bin corresponding to a strength
 bin :: Integer -> MyFloat -> MyFloat
 bin n s = fromRational ((floor (s * (fromInteger n))) % n)
 
--- Turn a distribution into a histogram (sum up the duplicated
--- probabilities).
-toHist :: Dist -> Hist
-toHist d = Data.Map.map sum (toMap d)
+-- Turn a multi-distribution into a distribution (sum up the
+-- duplicated probabilities).
+toDist :: MultiDist -> Dist
+toDist d = Data.Map.map sum (toMap d)
 
--- Turn a histogram into a distribution
-toDist :: Hist -> Dist
-toDist = Data.MultiMap.fromList . Data.Map.toList
-
--- Turn a distribution into a histogram of n bins
-toBinHist :: Integer -> Dist -> Hist
-toBinHist n d = toHist (mapKeys_fix (bin n) d)
+-- Turn a distribution into a multi-distribution
+toMultiDist :: Dist -> MultiDist
+toMultiDist = Data.MultiMap.fromList . Data.Map.toList
 
 -- Discretize a distribution in n bins
-discretize :: Integer -> Hist -> Hist
-discretize n h = toHist (mapKeys_fix (bin n) (toDist h))
+discretize :: Integer -> Dist -> Dist
+discretize n h = toDist (mapKeys_fix (bin n) (toMultiDist h))
 
 -- Discard probabilities under a given value
-trim :: Double -> Hist -> Hist
+trim :: Double -> Dist -> Dist
 trim e h = Data.Map.filter ((<=) e) h
 
 -- P(x+X successes in n+k trials | x successes in n trials)
@@ -185,8 +182,8 @@ deductionFormula sA sB sC sAB sBC =
     --        (Prelude.map show [sA, sB, sC, sAB, sBC, result]))
     result
 
-fullDeduction :: Hist-> Hist -> Hist -> Hist -> Hist -> Hist
-fullDeduction hA hB hC hAB hBC = toHist dAC
+fullDeduction :: Dist-> Dist -> Dist -> Dist -> Dist -> Dist
+fullDeduction hA hB hC hAB hBC = toDist dAC
     where dAC = fromList [ (deductionFormula sA sB sC sAB sBC, pAC) |
                            (sA, pA) <- (Data.Map.toList hA),
                            (sB, pB) <- (Data.Map.toList hB),
@@ -198,7 +195,7 @@ fullDeduction hA hB hC hAB hBC = toHist dAC
                            deductionConsistency sB sC sBC ]
 
 -- Perform Deduction by sampling m times the distributions
-monteCarloDeduction :: Integer -> Hist-> Hist -> Hist -> Hist -> Hist -> Hist
+monteCarloDeduction :: Integer -> Dist-> Dist -> Dist -> Dist -> Dist -> Dist
 monteCarloDeduction m hA hB hC hAB hBC = undefined -- TODO
 
 
@@ -214,46 +211,46 @@ log2 = logBase 2
 -- Compute the Kullback-Leibler divergence from hP to hQ. It assumes
 -- that hQ has the same support as hP or greater, and that their
 -- probabilities are non-null.
-kld :: Hist -> Hist -> MyFloat
+kld :: Dist -> Dist -> MyFloat
 kld hP hQ = sum [p * (log2 (p / (hQp s))) | (s, p) <- toList hP]
     where hQp s = fromJust (Data.Map.lookup s hQ)
 
 -- Compute the Jensen-Shannon divergence between hP and hQ. hM must be
 -- the average distribution between hP and hQ.
-jsd :: Hist -> Hist -> Hist -> MyFloat
+jsd :: Dist -> Dist -> Dist -> MyFloat
 jsd hP hQ hM = ((kld hP hM) + (kld hQ hM)) / 2.0
 
 -- Compute the square root of the Jensen-Shannon divergence between hP
 -- and hQ (to be a true metric). Generate hM on the fly as well.
-sqrtJsd :: Hist -> Hist -> MyFloat
+sqrtJsd :: Dist -> Dist -> MyFloat
 sqrtJsd hP hQ = sqrt (jsd hP hQ (average hP hQ))
 
 -- This function takes a function: strength x probability -> value,
 -- and distribution, and accumulate the result of this function over a
 -- distribution.
-accumulateWith :: (MyFloat -> MyFloat -> MyFloat) -> Hist -> MyFloat
+accumulateWith :: (MyFloat -> MyFloat -> MyFloat) -> Dist -> MyFloat
 accumulateWith f = foldWithKey (\s p r -> r + (f s p)) 0.0
 
 -- Compute the mean of a distribution.
-mean :: Hist -> MyFloat
+mean :: Dist -> MyFloat
 mean = accumulateWith (*)
 
 -- Compute the mode of a distribution (the strength with the highest
 -- probability). -1.0 if the distribution is empty.
-mode :: Hist -> MyFloat
+mode :: Dist -> MyFloat
 mode h = fst (foldWithKey max_p (-1.0, -1.0) h)
     where max_p s p (s_max_p, max_p) = if p > max_p
                                        then (s, p)
                                        else (s_max_p, max_p)
 
 -- Compute the standard deviation of a distribution.
-stdDev :: Hist -> MyFloat
+stdDev :: Dist -> MyFloat
 stdDev h = sqrt (accumulateWith (\s p -> p*(s - m)**2.0) h)
     where m = mean h
 
 -- -- Compute the interval [L, U] of a distribution as to minimize U-L
 -- -- and such that (b*100)% of it is in this interval.
--- indefiniteInterval :: MyFloat -> Hist -> (MyFloat, MyFloat)
+-- indefiniteInterval :: MyFloat -> Dist -> (MyFloat, MyFloat)
 -- indefiniteInterval b h = optimize fun jump step 0 guess lest
 --     where guess = mode h
 --           lest = undefined -- Estimate of L assuming a gaussian, of course it
@@ -344,7 +341,7 @@ main = do
     sBC = 0.9
     nBC = 500
     k = defaultK
-    resolution = defaultResolution       -- number of bins in the histogram
+    resolution = defaultResolution       -- number of bins in the distribution
 
   -- Calculate corresponding counts
   let
@@ -359,22 +356,22 @@ main = do
   -- Generate corresponding distributions
   let
     trimDis = (trim 1e-10) . (discretize resolution)
-    genTrim s n = trimDis (genHist s n k)
+    genTrim s n = trimDis (genDist s n k)
     hA = genTrim sA nA
     hB = genTrim sB nB
     hC = genTrim sC nC
     hAB = genTrim sAB nAB
     hBC = genTrim sBC nBC
 
-  putStrLn ("hA: " ++ (showHist hA))
-  putStrLn ("hB: " ++ (showHist hB))
-  putStrLn ("hC: " ++ (showHist hC))
-  putStrLn ("hAB: " ++ (showHist hAB))
-  putStrLn ("hBC: " ++ (showHist hBC))
+  putStrLn ("hA: " ++ (showDist hA))
+  putStrLn ("hB: " ++ (showDist hB))
+  putStrLn ("hC: " ++ (showDist hC))
+  putStrLn ("hAB: " ++ (showDist hAB))
+  putStrLn ("hBC: " ++ (showDist hBC))
 
   let lineTitle name strength count =
           format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
-  plotHists False [(lineTitle "A" sA nA, hA),
+  plotDists False [(lineTitle "A" sA nA, hA),
                    (lineTitle "B" sB nB, hB),
                    (lineTitle "C" sC nC, hC),
                    (lineTitle "AB" sAB nAB, hAB),
@@ -383,12 +380,12 @@ main = do
   -- Compute the result of deduction
   let
     hAC = trimDis (fullDeduction hA hB hC hAB hBC)
-  putStrLn ("hAC: " ++ (showHist hAC))
+  putStrLn ("hAC: " ++ (showDist hAC))
 
   -- Normalize the distribution
   let
     hACnorm = normalize hAC
-  putStrLn ("hACnorm: " ++ (showHist hACnorm))
+  putStrLn ("hACnorm: " ++ (showDist hACnorm))
 
   -- Find the resulting distribution count
   let
@@ -423,10 +420,10 @@ main = do
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "stdDev diff"]})
                 stdDevDsts
 
-  plotHists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
-  plotHists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
+  plotDists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
+  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
 
-  plotHists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
-  plotHists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  plotDists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
 
   threadDelay 100000000000

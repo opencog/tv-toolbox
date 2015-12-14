@@ -105,3 +105,30 @@ plot3d(pdf_beta_k(n, 0.3, 500, s), [s, 0, 1], [n, 1, 500], [grid, 100, 100], [z,
 // Typical b
 b = 0.9
 ```
+
+Alpha and beta parameter of a Beta distribution using mean and mode
+-------------------------------------------------------------------
+
+```math
+mean = alpha / (alpha + beta)
+mean*alpha + mean*beta = alpha
+beta = (alpha - mean*alpha) / mean
+beta = (alpha * (1 - mean)) / mean
+beta = alpha * (1/mean - 1)
+
+mode = (alpha - 1) / (alpha + beta - 2)
+mode * alpha + mode * beta - 2*mode = alpha - 1
+beta = (alpha - 1 - mode*alpha + 2*mode) / mode
+
+(alpha - mean*alpha) / mean = (alpha - 1 - mode*alpha + 2*mode) / mode
+alpha/mean - alpha = alpha/mode - 1/mode - alpha + 2
+alpha/mean - alpha - alpha/mode + alpha = - 1/mode + 2
+alpha (1/mean - 1/mode) = -1/mode + 2
+alpha = (-1/mode + 2) * (1/mean - 1/mode)
+alpha = (-1/mode + 2*mode/mode) * (mode/(mean*mode) - mean/(mean*mode))
+alpha = ( (2*mode-1) / mode ) * ( (mode - mean) / (mean*mode) )
+alpha = ((2*mode-1) * (mode - mean)) / (mode^2*mean)
+
+beta = ((2*mode-1) * (mode - mean)) / (mode^2*mean) * (1/mean - 1)
+beta = - ((mean - 1) (mode - mean) (2*mode - 1)) / (mean^2*mode^2)
+```

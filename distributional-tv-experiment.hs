@@ -228,9 +228,40 @@ jsd hP hQ hM = ((kld hP hM) + (kld hQ hM)) / 2.0
 sqrtJsd :: Hist -> Hist -> MyFloat
 sqrtJsd hP hQ = sqrt (jsd hP hQ (average hP hQ))
 
+-- This function takes a function: strength x probability -> value,
+-- and distribution, and accumulate the result of this function over a
+-- distribution.
+accumulateWith :: (MyFloat -> MyFloat -> MyFloat) -> Hist -> MyFloat
+accumulateWith f = foldWithKey (\s p r -> r + (f s p)) 0.0
+
 -- Compute the mean of a distribution.
 mean :: Hist -> MyFloat
-mean = foldWithKey (\s p m -> m + s*p) 0.0
+mean = accumulateWith (*)
+
+-- Compute the mode of a distribution (the strength with the highest
+-- probability). -1.0 if the distribution is empty.
+mode :: Hist -> MyFloat
+mode h = fst (foldWithKey max_p (-1.0, -1.0) h)
+    where max_p s p (s_max_p, max_p) = if p > max_p
+                                       then (s, p)
+                                       else (s_max_p, max_p)
+
+-- Compute the standard deviation of a distribution.
+stdev :: Hist -> MyFloat
+stdev h = sqrt (accumulateWith (\s p -> p*(s - m)**2.0) h)
+    where m = mean h
+
+-- Compute the interval [L, U] of a distribution such that (b*100)% of
+-- it is within this interval as to minimize U-L.
+indefiniteInterval :: MyFloat -> Hist -> (MyFloat, MyFloat)
+indefiniteInterval b h = optimizeFloat f 0 m lest
+    where m = mode h
+          lest = undefined -- Estimate of L assuming a gaussian, of course it
+                 -- would be much better to assume a Beta
+                 -- distribution, but then finding L and U isn't that
+                 -- easier.
+          f = undefined
+          optimizeFloat = undefined
 
 -- Find the middle between 2 integers
 middle :: Integer -> Integer -> Integer
@@ -238,7 +269,8 @@ middle l u = div (l + u) 2
 
 -- Find the Integer value x so that f(x) is minimized, assuming x is
 -- in [l, u], and given an initial guess. It is strongly adviced to
--- memoize f beforehand.
+-- memoize f beforehand. Note that [l, u] has nothing to do with the
+-- indefinite interval [L, U].
 optimize :: (Integer -> MyFloat) -> Integer -> Integer -> Integer -> Integer
 optimize f l u m | m == l && m == u = m
                  | m == u = if f (m-1) >= f m then m

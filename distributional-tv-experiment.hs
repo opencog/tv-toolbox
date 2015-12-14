@@ -247,43 +247,69 @@ mode h = fst (foldWithKey max_p (-1.0, -1.0) h)
                                        else (s_max_p, max_p)
 
 -- Compute the standard deviation of a distribution.
-stdev :: Hist -> MyFloat
-stdev h = sqrt (accumulateWith (\s p -> p*(s - m)**2.0) h)
+stdDev :: Hist -> MyFloat
+stdDev h = sqrt (accumulateWith (\s p -> p*(s - m)**2.0) h)
     where m = mean h
 
--- Compute the interval [L, U] of a distribution such that (b*100)% of
--- it is within this interval as to minimize U-L.
-indefiniteInterval :: MyFloat -> Hist -> (MyFloat, MyFloat)
-indefiniteInterval b h = optimizeFloat f 0 m lest
-    where m = mode h
-          lest = undefined -- Estimate of L assuming a gaussian, of course it
-                 -- would be much better to assume a Beta
-                 -- distribution, but then finding L and U isn't that
-                 -- easier.
-          f = undefined
-          optimizeFloat = undefined
+-- -- Compute the interval [L, U] of a distribution as to minimize U-L
+-- -- and such that (b*100)% of it is in this interval.
+-- indefiniteInterval :: MyFloat -> Hist -> (MyFloat, MyFloat)
+-- indefiniteInterval b h = optimize fun jump step 0 guess lest
+--     where guess = mode h
+--           lest = undefined -- Estimate of L assuming a gaussian, of course it
+--                  -- would be much better to assume a Beta
+--                  -- distribution, but then finding L and U isn't that
+--                  -- easier.
+--           fun = (toUp b l) - l
+--           jump = floatMiddle
+--           step = 1.0 / (fromInteger defaultResolution)
+--           toUp b l = foldWithKey f (0.0, 0.0) h
+--               where hFromLow = filterKeys ((>=) l) h
+--               where f s p (u, a) | b <= a = (u, a)
+--                                  | s < l = (0.0, 0.0)
+--                                  | otherwise = undefined -- TODO
 
--- Find the middle between 2 integers
-middle :: Integer -> Integer -> Integer
-middle l u = div (l + u) 2
+-- Find the middle between 2 integers using the division function d
+-- (I'm sure I can do better by defining a division that works for
+-- both Integral and Fractional types).
+middle :: Num a => (a -> a -> a) -> a -> a -> a
+middle d l u = d (l + u) 2
 
--- Find the Integer value x so that f(x) is minimized, assuming x is
--- in [l, u], and given an initial guess. It is strongly adviced to
--- memoize f beforehand. Note that [l, u] has nothing to do with the
--- indefinite interval [L, U].
-optimize :: (Integer -> MyFloat) -> Integer -> Integer -> Integer -> Integer
-optimize f l u m | m == l && m == u = m
-                 | m == u = if f (m-1) >= f m then m
-                            else optimize' f l (m-1) (middle l (m-1))
-                 | m == l = if f m <= f (m+1) then m
-                            else optimize' f (m+1) u (middle (m+1) u)
-                 | otherwise = if f (m-1) >= f m && f m <= f (m+1) then m
-                               else if (f (m+1)) - (f (m-1)) < 0
-                                    then optimize' f (m+1) u (middle (m+1) u)
-                                    else optimize' f l (m-1) (middle l (m-1))
-optimize' f l u m = trace (format "optimize f {0} {1} {2} = {3}"
-                                  (Prelude.map show [l, u, m, result]))
-                    result where result = optimize f l u m
+integerMiddle = middle div
+floatMiddle = middle (/)
+
+-- Find the value x that minimzes fun x, assuming x is in [low, up],
+-- and given an initial guess. It is strongly adviced to memoize fun
+-- beforehand.
+--
+-- jump is a function that take the new interval and returns a new
+-- guess (it would typically be the middle of the new interval).
+--
+-- step is the smaller meaningful change in x. If the function is
+-- noisy setting a larger step can be useful.
+optimize :: (Num a, Ord a, Show a) =>
+            (a -> MyFloat) -> (a -> a -> a) -> a -> a -> a -> a -> a
+optimize fun jump step low up guess
+    | width < step = guess
+    | up < rs = if fun guess <= fun ls then guess else rec_optimize low ls lj
+    | ls < low = if fun guess <= fun rs then guess else rec_optimize rs up rj
+    | otherwise = if fun guess <= fun ls && fun guess <= fun rs then guess
+                  else if (fun rs) - (fun ls) >= 0
+                       then rec_optimize low ls lj
+                       else rec_optimize rs up rj
+    where width = up - low
+          ls = guess - step  -- step to the left
+          rs = guess + step  -- step to the right
+          lj = jump low ls  -- jump to the left
+          rj = jump rs up   -- jump to the right
+          rec_optimize = optimize' fun jump step -- Simplified
+                                                -- recursive call of
+                                                -- optimize
+
+optimize' fun jump step low up guess =
+    trace (format "optimize fun {0} {1} {2} = {3}"
+           (Prelude.map show [low, up, guess, result]))
+    result where result = optimize fun jump step low up guess
 
 ----------
 -- Main --
@@ -333,11 +359,12 @@ main = do
   -- Generate corresponding distributions
   let
     trimDis = (trim 1e-10) . (discretize resolution)
-    hA = trimDis (genHist sA nA k)
-    hB = trimDis (genHist sB nB k)
-    hC = trimDis (genHist sC nC k)
-    hAB = trimDis (genHist sAB nAB k)
-    hBC = trimDis (genHist sBC nBC k)
+    genTrim s n = trimDis (genHist s n k)
+    hA = genTrim sA nA
+    hB = genTrim sB nB
+    hC = genTrim sC nC
+    hAB = genTrim sAB nAB
+    hBC = genTrim sBC nBC
 
   putStrLn ("hA: " ++ (showHist hA))
   putStrLn ("hB: " ++ (showHist hB))
@@ -366,20 +393,40 @@ main = do
   -- Find the resulting distribution count
   let
     sAC = mean hACnorm
-    countToSqrtJsd n = sqrtJsd (trimDis (genHist sAC n k)) hACnorm
-    memCountToSqrtJsd = memoize countToSqrtJsd
-    nACl = 0
-    nACu = nA + nB + nC + nAB + nBC
-    nACm = min nAB nBC
-    dsts = [(fromIntegral n, memCountToSqrtJsd n) | n <- [nACl..nACu]]
-    nAC = optimize' memCountToSqrtJsd nACl nACu nACm
-    hACstv = trimDis (genHist sAC nAC k)
+    modeAC = mode hACnorm
+    stdDevAC = stdDev hACnorm
+    nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
+    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
+    memNToSqrtJsd = memoize nToSqrtJsd
+    memNToStdDevDiff = memoize nToStdDevDiff
+    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow..nACup]]
+    nAClow = 1
+    nACup = nA + nB + nC + nAB + nBC
+    nACguess = min nAB nBC
+    sqrtJsdDsts = n2funProfile memNToSqrtJsd
+    stdDevDsts = n2funProfile memNToStdDevDiff
+    nAC = optimize memNToSqrtJsd integerMiddle 10 nAClow nACup nACguess
+    hACstv = genTrim sAC nAC
+    nACStdDev = optimize memNToStdDevDiff integerMiddle 10 nAClow nACup nACguess
+    hACStdDevStv = genTrim sAC nAC
 
-  -- Plot the distribution
-  putStrLn ("dsts = " ++ (show dsts))
+  -- Plot the distributions
+  putStrLn (format "sqrtJsdDsts: size = {0}, data = {1}"
+            [show (length sqrtJsdDsts), show sqrtJsdDsts])
   plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt"]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]}) dsts
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
+                sqrtJsdDsts
+
+  putStrLn (format "stdDevDsts: size = {0}, data = {1}"
+            [show (length stdDevDsts), show stdDevDsts])
+  plotPathStyle [Title "stdDev diff w.r.t. nAC", XLabel "nAC", YLabel "stdDev diff"]
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "stdDev diff"]})
+                stdDevDsts
+
   plotHists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
   plotHists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
 
-  threadDelay 1000000000
+  plotHists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  plotHists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
+
+  threadDelay 100000000000

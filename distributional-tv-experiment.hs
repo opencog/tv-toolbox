@@ -239,14 +239,18 @@ mean = accumulateWith (*)
 -- probability). -1.0 if the distribution is empty.
 mode :: Dist -> MyFloat
 mode h = fst (foldWithKey max_p (-1.0, -1.0) h)
-    where max_p s p (s_max_p, max_p) = if p > max_p
+    where max_p s p (s_max_p, p_max_p) = if p > p_max_p
                                        then (s, p)
-                                       else (s_max_p, max_p)
+                                       else (s_max_p, p_max_p)
+
+-- Compute the variance of a distribution.
+variance :: Dist -> MyFloat
+variance h = accumulateWith (\s p -> p*(s - m)**2.0) h
+    where m = mean h
 
 -- Compute the standard deviation of a distribution.
 stdDev :: Dist -> MyFloat
-stdDev h = sqrt (accumulateWith (\s p -> p*(s - m)**2.0) h)
-    where m = mean h
+stdDev = sqrt . variance
 
 -- -- Compute the interval [L, U] of a distribution as to minimize U-L
 -- -- and such that (b*100)% of it is in this interval.
@@ -391,21 +395,21 @@ main = do
   let
     sAC = mean hACnorm
     modeAC = mode hACnorm
-    stdDevAC = stdDev hACnorm
+    varAC = variance hACnorm
     nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
-    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
+    nToVarDiff n = abs ((variance (genTrim sAC n)) - varAC)
     memNToSqrtJsd = memoize nToSqrtJsd
-    memNToStdDevDiff = memoize nToStdDevDiff
+    memNToVarDiff = memoize nToVarDiff
     n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow..nACup]]
     nAClow = 1
     nACup = nA + nB + nC + nAB + nBC
     nACguess = min nAB nBC
     sqrtJsdDsts = n2funProfile memNToSqrtJsd
-    stdDevDsts = n2funProfile memNToStdDevDiff
+    varDiffDsts = n2funProfile memNToVarDiff
     nAC = optimize memNToSqrtJsd integerMiddle 10 nAClow nACup nACguess
     hACstv = genTrim sAC nAC
-    nACStdDev = optimize memNToStdDevDiff integerMiddle 10 nAClow nACup nACguess
-    hACStdDevStv = genTrim sAC nAC
+    nACVar = optimize memNToVarDiff integerMiddle 10 nAClow nACup nACguess
+    hACVarStv = genTrim sAC nAC
 
   -- Plot the distributions
   putStrLn (format "sqrtJsdDsts: size = {0}, data = {1}"
@@ -414,16 +418,16 @@ main = do
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
                 sqrtJsdDsts
 
-  putStrLn (format "stdDevDsts: size = {0}, data = {1}"
-            [show (length stdDevDsts), show stdDevDsts])
-  plotPathStyle [Title "stdDev diff w.r.t. nAC", XLabel "nAC", YLabel "stdDev diff"]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "stdDev diff"]})
-                stdDevDsts
+  putStrLn (format "stdVarDiffDsts: size = {0}, data = {1}"
+            [show (length varDiffDsts), show varDiffDsts])
+  plotPathStyle [Title "Variance diff w.r.t. nAC", XLabel "nAC", YLabel "Variance diff"]
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "Variance diff"]})
+                varDiffDsts
 
   plotDists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
   plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
 
-  plotDists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
-  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  plotDists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACVar, hACVarStv)]
+  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACVar, hACVarStv)]
 
   threadDelay 100000000000

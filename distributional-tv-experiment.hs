@@ -268,6 +268,11 @@ indefiniteInterval b h = (low, up)
           low = optimize fun jump step min_low max_low guess
           up = toUp low
 
+-- Return the width of
+indefiniteIntervalWidth :: MyFloat -> Dist -> MyFloat
+indefiniteIntervalWidth b h = up - low
+    where (low, up) = indefiniteInterval b h
+
 -- Find the middle between 2 integers using the division function d
 -- (I'm sure I can do better by defining a division that works for
 -- both Integral and Fractional types).
@@ -392,44 +397,69 @@ main = do
   -- Find the resulting distribution count
   let
     sAC = mean hACnorm
-    modeAC = mode hACnorm
-    stdDevAC = stdDev hACnorm
-    nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
-    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
-    memNToSqrtJsd = memoize nToSqrtJsd
-    memNToStdDevDiff = memoize nToStdDevDiff
-    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,5..nACup]]
     nAClow = 1
     nACup = nA + nB + nC + nAB + nBC
     nACguess = min nAB nBC
-    sqrtJsdDsts = n2funProfile memNToSqrtJsd
-    stdDevDiffDsts = n2funProfile memNToStdDevDiff
+
+    -- Using sqrt JSD as metric
+    nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
+    memNToSqrtJsd = memoize nToSqrtJsd
     nAC = optimize memNToSqrtJsd integerMiddle 10 nAClow nACup nACguess
     hACstv = genTrim sAC nAC
-    nACStdDev = optimize memNToStdDevDiff integerMiddle 10 nAClow nACup nACguess
-    hACStdDevStv = genTrim sAC nAC
 
-  -- Plot the distributions
-  putStrLn (format "sqrtJsdDsts: size = {0}, data = {1}"
-            [show (length sqrtJsdDsts), show sqrtJsdDsts])
+    -- Using std dev distance as metric
+    stdDevAC = stdDev hACnorm
+    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
+    memNToStdDevDiff = memoize nToStdDevDiff
+    nACStdDev = optimize memNToStdDevDiff integerMiddle 10 nAClow nACup nACguess
+    hACStdDevStv = genTrim sAC nACStdDev
+
+    -- Using U-L distance as metric
+    b = 0.9
+    widthAC = indefiniteIntervalWidth b hACnorm
+    nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim sAC n)) - widthAC)
+    memNToWidthDiff = memoize nToWidthDiff
+    nACWidth = optimize memNToWidthDiff integerMiddle 10 nAClow nACup nACguess
+    hACWidthStv = genTrim sAC nACWidth
+
+  -- Plot the distributions using the found counts of all metrics
+  plotDists False [("AC", hACnorm),
+                   (lineTitle "AC" sAC nAC, hACstv),
+                   (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv),
+                   (lineTitle "ACWidth" sAC nACWidth, hACWidthStv)]
+  plotDists True [("(zoom) AC", hACnorm),
+                  (lineTitle "(zoom) AC" sAC nAC, hACstv),
+                  (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv),
+                  (lineTitle "(zoom) ACWidth" sAC nACWidth, hACWidthStv)]
+
+  -- Plot the profile of each metric
+  let
+    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,5..nACup]]
+    sqrtJsdProfile = n2funProfile memNToSqrtJsd
+    stdDevDiffProfile = n2funProfile memNToStdDevDiff
+    widthDiffProfile = n2funProfile memNToWidthDiff
+
+  -- Sqrt JSD
+  putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"
+            [show (length sqrtJsdProfile), show sqrtJsdProfile])
   plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt"]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
-                sqrtJsdDsts
+                sqrtJsdProfile
 
-  putStrLn (format "stdStdDevDiffDsts: size = {0}, data = {1}"
-            [show (length stdDevDiffDsts), show stdDevDiffDsts])
+  -- Std dev distance
+  putStrLn (format "stdStdDevDiffProfile: size = {0}, data = {1}"
+            [show (length stdDevDiffProfile), show stdDevDiffProfile])
   plotPathStyle [Title "Std dev diff w.r.t. nAC",
                  XLabel "nAC", YLabel "Std dev diff"]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
-                stdDevDiffDsts
+                stdDevDiffProfile
 
-  plotDists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
-  plotDists True [("(zoom) AC", hACnorm),
-                  (lineTitle "(zoom) AC" sAC nAC, hACstv)]
-
-  plotDists False [("AC", hACnorm),
-                   (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
-  plotDists True [("(zoom) AC", hACnorm),
-                  (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  -- Width distance
+  putStrLn (format "stdWidthDiffProfile: size = {0}, data = {1}"
+            [show (length widthDiffProfile), show widthDiffProfile])
+  plotPathStyle [Title "Width diff w.r.t. nAC",
+                 XLabel "nAC", YLabel "Width diff"]
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "Width diff"]})
+                widthDiffProfile
 
   threadDelay 100000000000

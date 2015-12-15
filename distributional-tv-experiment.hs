@@ -252,23 +252,21 @@ variance h = accumulateWith (\s p -> p*(s - m)**2.0) h
 stdDev :: Dist -> MyFloat
 stdDev = sqrt . variance
 
--- -- Compute the interval [L, U] of a distribution as to minimize U-L
--- -- and such that (b*100)% of it is in this interval.
--- indefiniteInterval :: MyFloat -> Dist -> (MyFloat, MyFloat)
--- indefiniteInterval b h = optimize fun jump step 0 guess lest
---     where guess = mode h
---           lest = undefined -- Estimate of L assuming a gaussian, of course it
---                  -- would be much better to assume a Beta
---                  -- distribution, but then finding L and U isn't that
---                  -- easier.
---           fun = (toUp b l) - l
---           jump = floatMiddle
---           step = 1.0 / (fromInteger defaultResolution)
---           toUp b l = foldWithKey f (0.0, 0.0) h
---               where hFromLow = filterKeys ((>=) l) h
---               where f s p (u, a) | b <= a = (u, a)
---                                  | s < l = (0.0, 0.0)
---                                  | otherwise = undefined -- TODO
+-- Compute the interval [L, U] of a distribution as to minimize U-L
+-- and such that (b*100)% of it is in this interval.
+indefiniteInterval :: MyFloat -> Dist -> (MyFloat, MyFloat)
+indefiniteInterval b h = (low, up)
+    where min_low = 0
+          max_low = mode h
+          guess = max (max_low - b*stdDev h) min_low
+          fun l = (toUp l) - l
+          jump = floatMiddle
+          step = 2.0 / (fromInteger defaultResolution)
+          toUp l = fst (foldWithKey f (0.0, 0.0) h)
+              where f s p (u, a) | s < l || b <= a = (u, a)
+                                 | otherwise = (s, a + p)
+          low = optimize fun jump step min_low max_low guess
+          up = toUp low
 
 -- Find the middle between 2 integers using the division function d
 -- (I'm sure I can do better by defining a division that works for
@@ -395,21 +393,21 @@ main = do
   let
     sAC = mean hACnorm
     modeAC = mode hACnorm
-    varAC = variance hACnorm
+    stdDevAC = stdDev hACnorm
     nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
-    nToVarDiff n = abs ((variance (genTrim sAC n)) - varAC)
+    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
     memNToSqrtJsd = memoize nToSqrtJsd
-    memNToVarDiff = memoize nToVarDiff
-    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow..nACup]]
+    memNToStdDevDiff = memoize nToStdDevDiff
+    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,5..nACup]]
     nAClow = 1
     nACup = nA + nB + nC + nAB + nBC
     nACguess = min nAB nBC
     sqrtJsdDsts = n2funProfile memNToSqrtJsd
-    varDiffDsts = n2funProfile memNToVarDiff
+    stdDevDiffDsts = n2funProfile memNToStdDevDiff
     nAC = optimize memNToSqrtJsd integerMiddle 10 nAClow nACup nACguess
     hACstv = genTrim sAC nAC
-    nACVar = optimize memNToVarDiff integerMiddle 10 nAClow nACup nACguess
-    hACVarStv = genTrim sAC nAC
+    nACStdDev = optimize memNToStdDevDiff integerMiddle 10 nAClow nACup nACguess
+    hACStdDevStv = genTrim sAC nAC
 
   -- Plot the distributions
   putStrLn (format "sqrtJsdDsts: size = {0}, data = {1}"
@@ -418,16 +416,20 @@ main = do
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
                 sqrtJsdDsts
 
-  putStrLn (format "stdVarDiffDsts: size = {0}, data = {1}"
-            [show (length varDiffDsts), show varDiffDsts])
-  plotPathStyle [Title "Variance diff w.r.t. nAC", XLabel "nAC", YLabel "Variance diff"]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "Variance diff"]})
-                varDiffDsts
+  putStrLn (format "stdStdDevDiffDsts: size = {0}, data = {1}"
+            [show (length stdDevDiffDsts), show stdDevDiffDsts])
+  plotPathStyle [Title "Std dev diff w.r.t. nAC",
+                 XLabel "nAC", YLabel "Std dev diff"]
+                (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
+                stdDevDiffDsts
 
   plotDists False [("AC", hACnorm), (lineTitle "AC" sAC nAC, hACstv)]
-  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) AC" sAC nAC, hACstv)]
+  plotDists True [("(zoom) AC", hACnorm),
+                  (lineTitle "(zoom) AC" sAC nAC, hACstv)]
 
-  plotDists False [("AC", hACnorm), (lineTitle "ACStdDev" sAC nACVar, hACVarStv)]
-  plotDists True [("(zoom) AC", hACnorm), (lineTitle "(zoom) ACStdDev" sAC nACVar, hACVarStv)]
+  plotDists False [("AC", hACnorm),
+                   (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv)]
+  plotDists True [("(zoom) AC", hACnorm),
+                  (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv)]
 
   threadDelay 100000000000

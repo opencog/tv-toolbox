@@ -26,7 +26,8 @@ module TVToolBox (-- Types
                   indefiniteIntervalWidth,
                   -- General/Math
                   integerMiddle,
-                  optimize
+                  optimize,
+                  optimize'
                  ) where
                   
 import Math.Gamma (gamma)
@@ -72,7 +73,7 @@ defaultK :: Integer
 defaultK = 5000
 
 defaultResolution :: Integer
-defaultResolution = 100
+defaultResolution = 50
 
 --------------
 -- Plotting --

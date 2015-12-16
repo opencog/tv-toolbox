@@ -1,5 +1,7 @@
 #!/usr/bin/env runhaskell
 
+{-# LANGUAGE BangPatterns #-}
+
 import Control.Concurrent (threadDelay)
 import Data.Function.Memoize (memoize)
 import System.Environment (getArgs)
@@ -127,11 +129,11 @@ main = do
   let
     trimDis = (trim 1e-10) . (discretize resolution)
     genTrim s n = trimDis (genDist s n k)
-    hA = genTrim sA nA
-    hB = genTrim sB nB
-    hC = genTrim sC nC
-    hAB = genTrim sAB nAB
-    hBC = genTrim sBC nBC
+    !hA = genTrim sA nA
+    !hB = genTrim sB nB
+    !hC = genTrim sC nC
+    !hAB = genTrim sAB nAB
+    !hBC = genTrim sBC nBC
 
   putStrLn ("hA: " ++ (showDist hA))
   putStrLn ("hB: " ++ (showDist hB))
@@ -149,12 +151,12 @@ main = do
 
   -- Compute the result of deduction
   let
-    hAC = trimDis (fullDeduction hA hB hC hAB hBC)
+    !hAC = trimDis (fullDeduction hA hB hC hAB hBC)
   putStrLn ("hAC: " ++ (showDist hAC))
 
   -- Normalize the distribution
   let
-    hACnorm = normalize hAC
+    !hACnorm = normalize hAC
   putStrLn ("hACnorm: " ++ (showDist hACnorm))
 
   -- Find the resulting distribution count
@@ -168,23 +170,23 @@ main = do
     -- Using sqrt JSD as metric
     nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
     memNToSqrtJsd = memoize nToSqrtJsd
-    nAC = optimizeCount memNToSqrtJsd
-    hACstv = genTrim sAC nAC
+    !nAC = optimizeCount memNToSqrtJsd
+    !hACstv = genTrim sAC nAC
 
     -- Using std dev distance as metric
     stdDevAC = stdDev hACnorm
     nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
     memNToStdDevDiff = memoize nToStdDevDiff
-    nACStdDev = optimizeCount memNToStdDevDiff
-    hACStdDevStv = genTrim sAC nACStdDev
+    !nACStdDev = optimizeCount memNToStdDevDiff
+    !hACStdDevStv = genTrim sAC nACStdDev
 
     -- -- Using U-L distance as metric
     b = 0.9
     widthAC = indefiniteIntervalWidth b hACnorm
     nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim sAC n)) - widthAC)
     memNToWidthDiff = memoize nToWidthDiff
-    nACWidth = optimizeCount memNToWidthDiff
-    hACWidthStv = genTrim sAC nACWidth
+    !nACWidth = optimizeCount memNToWidthDiff
+    !hACWidthStv = genTrim sAC nACWidth
 
   -- Plot the distributions using the found counts of all metrics
   plotDists False [("AC", hACnorm),

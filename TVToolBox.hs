@@ -41,7 +41,7 @@ import Math.Combinatorics.Exact.Binomial (choose)
 import System.Environment (getArgs)
 import Text.Format (format)
 import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
-import Data.Map (Map, map, toList, foldr, size, lookup, unionWith,
+import Data.Map (Map, map, fromList, toList, foldr, size, lookup, unionWith,
                  foldWithKey, empty, insertWith, filter)
 -- import Data.List (length)
 import Debug.Trace (trace)
@@ -132,36 +132,24 @@ distSum d = Data.Map.foldr (+) 0 d
 
 -- Given a simple TV <s, n> and a lookahead k, generate the
 -- corresponding (multi)-distribution.
-genMultiDist :: MyFloat -> Integer -> Integer -> MultiDist
-genMultiDist s n k =
-  fromList [(fromRational ((x+cx) % (n+k)), prob n x k cx) | cx <- [0..k]]
+genDist :: MyFloat -> Integer -> Integer -> Dist
+genDist s n k =
+  Data.Map.fromList [(fromRational ((x+cx) % (n+k)), prob n x k cx) | cx <- [0..k]]
   where x = strengthToCount s n
 
 -- Like genMultiDist but uses prob_beta, which might be more accurate
 -- when n is low.
-genMultiDist_beta :: MyFloat -> Integer -> Integer -> MultiDist
-genMultiDist_beta s n k =
-    fromList [(p, prob_beta n s k p) | cx <- [0..k], let p = cx2p n s k cx]
+genDist_beta :: MyFloat -> Integer -> Integer -> Dist
+genDist_beta s n k =
+  Data.Map.fromList [(p, prob_beta n s k p) | cx <- [0..k], let p = cx2p n s k cx]
 
 -- Like genMultiDist_beta but uses directly p instead of running cx
 -- from 0 to k. This is convenient to get an approximation of a
 -- continuous distribution, even when k is low. step is the difference
 -- in probability between each p.
-genMultiDist_beta_contin :: MyFloat -> Integer -> Integer -> MyFloat -> MultiDist
-genMultiDist_beta_contin s n k step =
-    fromList [(p, prob_beta n s k p) | p <- [0.0,step..1.0]]
-
--- Like genDist but output a distribution directly
-genDist :: MyFloat -> Integer -> Integer -> Dist
-genDist s n k = toDist (genMultiDist s n k)
-
--- Like genDist but output a distribution directly
-genDist_beta :: MyFloat -> Integer -> Integer -> Dist
-genDist_beta s n k = toDist (genMultiDist_beta s n k)
-
--- Like genDist but output a distribution directly
 genDist_beta_contin :: MyFloat -> Integer -> Integer -> MyFloat -> Dist
-genDist_beta_contin s n k step = toDist (genMultiDist_beta_contin s n k step)
+genDist_beta_contin s n k step =
+  Data.Map.fromList [(p, prob_beta n s k p) | p <- [0.0,step..1.0]]
 
 -- Multiply the probabilities of a distribution by a given value
 scale :: MyFloat -> Dist -> Dist

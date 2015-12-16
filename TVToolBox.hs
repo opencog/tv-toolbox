@@ -15,6 +15,8 @@ module TVToolBox (-- Types
                   strengthToCount,
                   -- Distributional TV
                   genDist,
+                  genDist_beta,
+                  genDist_beta_contin,
                   toDist,
                   discretize,
                   trim,
@@ -75,6 +77,11 @@ defaultK = 5000
 defaultResolution :: Integer
 defaultResolution = 50
 
+-- If n is below that threshold, then choose_beta, and prob_beta is
+-- used instead of choose or prob.
+defaultBetaThreshold :: Integer
+defaultBetaThreshold = 1000
+
 --------------
 -- Plotting --
 --------------
@@ -123,16 +130,38 @@ strengthToCount s n = round (s * (fromInteger n))
 distSum :: Dist -> MyFloat
 distSum d = Data.Map.foldr (+) 0 d
 
--- Given a simple TV <s, c> and a lookahead k, generate the
+-- Given a simple TV <s, n> and a lookahead k, generate the
 -- corresponding (multi)-distribution.
 genMultiDist :: MyFloat -> Integer -> Integer -> MultiDist
 genMultiDist s n k =
   fromList [(fromRational ((x+cx) % (n+k)), prob n x k cx) | cx <- [0..k]]
   where x = strengthToCount s n
 
+-- Like genMultiDist but uses prob_beta, which might be more accurate
+-- when n is low.
+genMultiDist_beta :: MyFloat -> Integer -> Integer -> MultiDist
+genMultiDist_beta s n k =
+    fromList [(p, prob_beta n s k p) | cx <- [0..k], let p = cx2p n s k cx]
+
+-- Like genMultiDist_beta but uses directly p instead of running cx
+-- from 0 to k. This is convenient to get an approximation of a
+-- continuous distribution, even when k is low. step is the difference
+-- in probability between each p.
+genMultiDist_beta_contin :: MyFloat -> Integer -> Integer -> MyFloat -> MultiDist
+genMultiDist_beta_contin s n k step =
+    fromList [(p, prob_beta n s k p) | p <- [0.0,step..1.0]]
+
 -- Like genDist but output a distribution directly
 genDist :: MyFloat -> Integer -> Integer -> Dist
 genDist s n k = toDist (genMultiDist s n k)
+
+-- Like genDist but output a distribution directly
+genDist_beta :: MyFloat -> Integer -> Integer -> Dist
+genDist_beta s n k = toDist (genMultiDist_beta s n k)
+
+-- Like genDist but output a distribution directly
+genDist_beta_contin :: MyFloat -> Integer -> Integer -> MyFloat -> Dist
+genDist_beta_contin s n k step = toDist (genMultiDist_beta_contin s n k step)
 
 -- Multiply the probabilities of a distribution by a given value
 scale :: MyFloat -> Dist -> Dist
@@ -174,8 +203,35 @@ trim e h = Data.Map.filter ((<=) e) h
 -- P(x+X successes in n+k trials | x successes in n trials)
 prob :: Integer -> Integer -> Integer -> Integer -> MyFloat
 prob n x k cx = fromRational (num % den)
-  where num = ((n+1)*(choose k cx)*(choose n x))
-        den = ((k+n+1)*(choose (k+n) (cx+x)))
+  where num = (n+1)*(choose k cx)*(choose n x)
+        den = (k+n+1)*(choose (k+n) (cx+x))
+
+-- Version of choose that takes fractional values as second
+-- argument. Can be more accurate for lower n.
+choose_beta :: Integer -> MyFloat -> Integer
+choose_beta n k | n < defaultBetaThreshold =
+                    round (1.0 / ((nreal+1.0) * beta (nreal-k+1) (k+1)))
+                | otherwise = choose n (round k)
+    where nreal = (fromInteger n) :: MyFloat
+
+-- P((p*100)% success in n+k trials | (s*100)% success in n trials)
+--
+-- It uses the beta function instead of choose when the size is lower
+-- than 1000 in order to calculate fractional probabilities that are
+-- finer than n or k. This may be a way to work around the noise
+-- created by JSD sqrt distances.
+prob_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
+prob_beta n s k p = fromRational (num % den)
+  where num = (n+1)*(choose_beta k (p*(nreal+kreal) - s*nreal))
+              *(choose_beta n (s*nreal))
+        den = (k+n+1)*(choose_beta (k+n) (p*(nreal+kreal)))
+        nreal = fromInteger n
+        kreal = fromInteger k
+
+-- Little function to compute the probability corresponding to cx
+cx2p :: Integer -> MyFloat -> Integer -> Integer -> MyFloat
+cx2p n s k cx = (s*nreal + cxreal) / (nreal+kreal)
+    where [nreal, kreal, cxreal] = Prelude.map fromInteger [n, k, cx]
 
 -- Compute the Kullback-Leibler divergence from hP to hQ. It assumes
 -- that hQ has the same support as hP or greater, and that their
@@ -251,7 +307,12 @@ indefiniteIntervalWidth b h = up - low
 ------------------
 
 -- Base 2 log
+log2 :: MyFloat -> MyFloat
 log2 = logBase 2
+
+-- Beta function
+beta :: MyFloat -> MyFloat -> MyFloat
+beta z w = (gamma z) * (gamma w) / gamma (z+w)
 
 -- Find the middle between 2 integers using the division function d
 -- (I'm sure I can do better by defining a division that works for

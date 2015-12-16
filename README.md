@@ -6,9 +6,16 @@ Tool box for experimenting with TV types.
 Requirements
 ------------
 
-1. multimap
-2. numbers
-3. TODO
+* ghc version 7.8.3 or above
+* Libraries
+  1. multimap
+  2. numbers
+  3. memoize
+  4. gamma
+  5. exact-combinatorics
+  6. text-format-simple
+  7. gnuplot
+TODO
 
 Maxima
 ------

@@ -47,7 +47,7 @@ import System.Environment (getArgs)
 import Text.Format (format)
 import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
 import Data.Map (Map, map, fromList, toList, foldr, size, lookup, unionWith,
-                 foldWithKey, empty, insertWith, filter)
+                 foldrWithKey, foldlWithKey, empty, insertWith, filter)
 -- import Data.List (length)
 import Debug.Trace (trace)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
@@ -270,7 +270,7 @@ sqrtJsd hP hQ = sqrt (jsd hP hQ (average hP hQ))
 -- and distribution, and accumulate the result of this function over a
 -- distribution.
 accumulateWith :: (MyFloat -> MyFloat -> MyFloat) -> Dist -> MyFloat
-accumulateWith f = foldWithKey (\s p r -> r + (f s p)) 0.0
+accumulateWith f = foldrWithKey (\s p r -> r + (f s p)) 0.0
 
 -- Compute the mean of a distribution.
 mean :: Dist -> MyFloat
@@ -279,10 +279,9 @@ mean = accumulateWith (*)
 -- Compute the mode of a distribution (the strength with the highest
 -- probability). -1.0 if the distribution is empty.
 mode :: Dist -> MyFloat
-mode h = fst (foldWithKey max_p (-1.0, -1.0) h)
-    where max_p s p (s_max_p, p_max_p) = if p > p_max_p
-                                       then (s, p)
-                                       else (s_max_p, p_max_p)
+mode h = fst (foldrWithKey max_p (-1.0, -1.0) h)
+    where max_p s p (s_max_p, p_max_p) = if p > p_max_p then (s, p)
+                                         else (s_max_p, p_max_p)
 
 -- Compute the variance of a distribution.
 variance :: Dist -> MyFloat
@@ -363,16 +362,19 @@ optimize fun jump step low up guess
           rs = guess + step  -- step to the right
           lj = jump low ls  -- jump to the left
           rj = jump rs up   -- jump to the right
-          rec_optimize = optimize' fun jump step -- Simplified
+          fgu = fun guess
+          fls = fun ls
+          frs = fun rs
+          rec_optimize = optimizeDbg fun jump step -- Simplified
                                                 -- recursive call of
                                                 -- optimize
 
-optimize' fun jump step low up guess =
+optimizeDbg fun jump step low up guess =
     trace (format "optimize fun {0} {1} {2} = {3}"
            (Prelude.map show [low, up, guess, result]))
     result where result = optimize fun jump step low up guess
 
 -- MultiMap mapKeys fix
-mapKeys_fix f m = fromMap (foldWithKey f' empty m')
+mapKeys_fix f m = fromMap (foldrWithKey f' empty m')
     where m' = toMap m
           f' k a b = insertWith (++) (f k) a b

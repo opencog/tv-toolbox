@@ -314,23 +314,44 @@ stdDev = sqrt . variance
 -- Indefinite TV --
 -------------------
 
+-- Given a distribution, a confidence interval and L, compute the
+-- corresponding U.
+toUp :: Dist -> MyFloat -> MyFloat -> MyFloat
+toUp h b l = fst (foldlWithKey f (0.0, 0.0) h)
+  where
+    -- Replace f by fDbg in the upper expression to debug
+    fDbg (u, a) s p = trace (format "toUp f {0} {1} {2} = {3}"
+                             [show (u, a), show s, show p, show res])
+                      res where res = f (u, a) s p
+    f (u, a) s p | s < l || b <= a = (u, a)
+                 | otherwise = (s, a + p)
+
+-- Given a distribution, a confidence interval and U, compute the
+-- corresponding L.
+toLow :: Dist -> MyFloat -> MyFloat -> MyFloat
+toLow h b u = fst (foldrWithKey f (0.0, 0.0) h)
+  where
+    -- Replace f by fDbg in the upper expression to debug
+    fDbg s p (l, a) = trace (format "toLow f {0} {1} {2} = {3}"
+                             [show s, show p, show (l, a), show res])
+                      res where res = f s p (l, a)
+    f s p (l, a) | u < s || b <= a = (l, a)
+                 | otherwise = (s, a + p)
+
 -- Compute the interval [L, U] of a distribution as to minimize U-L
 -- and such that (b*100)% of it is in this interval.
 indefiniteInterval :: MyFloat -> Dist -> (MyFloat, MyFloat)
 indefiniteInterval b h = (low, up)
     where min_low = 0
-          max_low = mode h
-          guess = max (max_low - b*stdDev h) min_low
-          fun l = (toUp l) - l
+          max_low = toLow h b 1.0
+          guess = (min_low + max_low) / 2
+          step = 1.0 / (fromInteger defaultResolution)
+          width l = (toUp h b l) - l
           jump = floatMiddle
-          step = 2.0 / (fromInteger defaultResolution)
-          toUp l = fst (foldWithKey f (0.0, 0.0) h)
-              where f s p (u, a) | s < l || b <= a = (u, a)
-                                 | otherwise = (s, a + p)
-          low = optimize fun jump step min_low max_low guess
-          up = toUp low
+          low = optimizeDbg width jump step min_low max_low guess
+          up = toUp h b low
 
--- Return the width of
+-- Return the width of a distribution
 indefiniteIntervalWidth :: MyFloat -> Dist -> MyFloat
 indefiniteIntervalWidth b h = up - low
     where (low, up) = indefiniteInterval b h

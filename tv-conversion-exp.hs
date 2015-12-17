@@ -8,7 +8,8 @@ import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
                                 Attribute(Title, XLabel, YLabel, XRange),
                                 PlotStyle, defaultStyle,
                                 lineSpec, LineSpec(CustomStyle),
-                                LineAttr(LineTitle))
+                                LineAttr(LineTitle),
+                                plotFunc3d)
 
 import TVToolBox
 
@@ -20,16 +21,16 @@ main :: IO ()
 main = do
   let
     sA = 0.5
-    nA = 500
+    nA = 10
     k = defaultK
     resolution = defaultResolution       -- number of bins in the distribution
 
-  -- Calculate corresponding counts
+  -- Calculate corresponding count
   let
     xA = strengthToCount sA nA
   putStrLn ("xA = " ++ show xA)
 
-  -- Generate corresponding distributions
+  -- Generate corresponding distribution
   let
     trimDis = (trim 1e-10) . (discretize resolution)
     genTrim s n = trimDis (genDist s n k)
@@ -40,5 +41,8 @@ main = do
   let lineTitle name strength count =
           format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
   plotDists False [(lineTitle "A" sA nA, dA)]
+
+  -- Plot in 3d the pdf varying k
+  plotFunc3d [] [] [0.0,0.001..1.0] [1..2] (\p k -> pdf_beta nA sA k p)
 
   threadDelay 100000000000

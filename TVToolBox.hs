@@ -390,10 +390,16 @@ optimize :: (Num a, Ord a, Show a) =>
             (a -> MyFloat) -> (a -> a -> a) -> a -> a -> a -> a -> a
 optimize fun jump step low up guess
     | width < step = guess
-    | up < rs = if fun guess <= fun ls then guess else rec_optimize low ls lj
-    | ls < low = if fun guess <= fun rs then guess else rec_optimize rs up rj
-    | otherwise = if fun guess <= fun ls && fun guess <= fun rs then guess
-                  else if (fun rs) - (fun ls) >= 0
+    | up < rs = -- trace (format "optimize up={0} < rs={1}, fgu={2}, fls={3}"
+                --       [show up, show rs, show fgu, show fls]) $
+                if fgu <= fls then guess else rec_optimize low ls lj
+    | ls < low = -- trace (format "optimize ls={0} < low={1}, fgu={2}, frs={3}"
+                 --       [show ls, show low, show fgu, show frs]) $
+                 if fgu <= frs then guess else rec_optimize rs up rj
+    | otherwise = -- trace (format "optimize fgu={0}, fls={1}, frs={2}"
+                  --       [show fgu, show fls, show frs]) $
+                  if fgu <= fls && fgu <= frs then guess
+                  else if frs - fls >= 0
                        then rec_optimize low ls lj
                        else rec_optimize rs up rj
     where width = up - low

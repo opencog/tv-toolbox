@@ -165,7 +165,7 @@ main = do
     nAClow = 1
     nACup = nA + nB + nC + nAB + nBC
     nACguess = min nAB nBC
-    optimizeCount f = optimize' f integerMiddle 20 nAClow nACup nACguess
+    optimizeCount f = optimizeDbg f integerMiddle 20 nAClow nACup nACguess
 
     -- Using sqrt JSD as metric
     nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm

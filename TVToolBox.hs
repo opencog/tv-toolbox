@@ -17,6 +17,9 @@ module TVToolBox (-- Types
                   genDist,
                   genDist_beta,
                   genDist_beta_contin,
+                  prob,
+                  prob_beta,
+                  pdf_beta,
                   toDist,
                   discretize,
                   trim,
@@ -25,14 +28,16 @@ module TVToolBox (-- Types
                   stdDev,
                   sqrtJsd,
                   -- Indefinite TV
+                  toUp,
+                  indefiniteInterval,
                   indefiniteIntervalWidth,
                   -- General/Math
                   integerMiddle,
                   optimize,
-                  optimize'
+                  optimizeDbg
                  ) where
                   
-import Math.Gamma (gamma)
+import Math.Gamma (gamma, lnGamma)
 import Data.Maybe (fromJust)
 import Data.Ratio ((%))
 import Data.Number.BigFloat (BigFloat, Prec10, Prec50)
@@ -208,12 +213,35 @@ choose_beta n k | n < defaultBetaThreshold =
 -- than 1000 in order to calculate fractional probabilities that are
 -- finer than n or k. This may be a way to work around the noise
 -- created by JSD sqrt distances.
+--
+-- Note that it not be strictly speaking a probability because it may
+-- not sum up to one. In order to obtain a probability you may
+-- normalize the distribution obtained from it. Or use pdf_beta
+-- instead, which is a pdf instead of a probability, that would sum up
+-- to one if integrated.
 prob_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
 prob_beta n s k p = fromRational (num % den)
   where num = (n+1)*(choose_beta k (p*(nreal+kreal) - s*nreal))
               *(choose_beta n (s*nreal))
         den = (k+n+1)*(choose_beta (k+n) (p*(nreal+kreal)))
         nreal = fromInteger n
+        kreal = fromInteger k
+
+prob_beta' :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
+prob_beta' n s k p = num / den
+  where num = beta (-cnreal*p + cnreal + 1) (cnreal*p + 1)
+        den1 = kreal + 1
+        den2 = beta (-nreal*p + nreal + 1) (nreal*p + 1)
+        den3 = beta (-cnreal*s + nreal*p + kreal + 1) ((cnreal)*s - nreal*p + 1)
+        den = den1 * den2 * den3
+        cnreal = nreal+kreal
+        nreal = fromInteger n
+        kreal = fromInteger k
+
+-- Like prob_beta, except it is a pdf
+pdf_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
+pdf_beta n s k p = (nreal + kreal) * prob_beta n s k p
+  where nreal = fromInteger n
         kreal = fromInteger k
 
 -- Little function to compute the probability corresponding to cx

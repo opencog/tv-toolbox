@@ -201,9 +201,9 @@ main = do
   -- Plot the profile of each metric
   let
     n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,20..nACup]]
-    sqrtJsdProfile = n2funProfile memNToSqrtJsd
-    stdDevDiffProfile = n2funProfile memNToStdDevDiff
-    widthDiffProfile = n2funProfile memNToWidthDiff
+    !sqrtJsdProfile = n2funProfile memNToSqrtJsd
+    !stdDevDiffProfile = n2funProfile memNToStdDevDiff
+    !widthDiffProfile = n2funProfile memNToWidthDiff
 
   -- Sqrt JSD
   putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"

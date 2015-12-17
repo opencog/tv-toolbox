@@ -72,15 +72,33 @@ type MultiDist = MultiMap MyFloat MyFloat
 -- Like MultiDist but each strength is unique
 type Dist = Map MyFloat MyFloat
 
+-- -- Define the TruthValue class
+-- class TruthValue tv where
+--   getTVMean :: tv -> MyFloat
+--   getTVConfidence :: tv -> MyFloat
+
+-- data STV = STV { mean :: MyFloat, confidence :: MyFloat }
+--          deriving (TruthValue, Show, Eq)
+
+-- data ITV = ITV { l :: MyFloat, u :: MyFloat, b :: MyFloat, k :: Integer }
+--          deriving (TruthValue, Show, Eq)
+
+-- data DTV = DTV { dist :: Map MyFloat MyFloat, k :: Integer }
+--          deriving (TruthValue, Show, Eq)
+
 ---------------
 -- Constants --
 ---------------
 
 defaultK :: Integer
-defaultK = 5000
+defaultK = 10000
+
+-- Used to convert count from/to confidence
+defaultSTVK :: Integer
+defaultSTVK = defaultK          -- Equal to the lookahead for now
 
 defaultResolution :: Integer
-defaultResolution = 50
+defaultResolution = 100
 
 -- If n is below that threshold, then choose_beta, and prob_beta is
 -- used instead of choose or prob.

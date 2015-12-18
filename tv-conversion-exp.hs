@@ -21,9 +21,9 @@ import TVToolBox
 main :: IO ()
 main = do
   let
-    sA = 0.5
-    nA = 10
-    k = defaultK
+    sA = 0.7
+    nA = 1000
+    k = 10
     resolution = defaultResolution       -- number of bins in the distribution
 
   -- Calculate corresponding count

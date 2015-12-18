@@ -165,20 +165,22 @@ main = do
   -- Find the resulting distribution count
   let
     sAC = mean hACnorm
-    nAClow = 1
-    nACup = nA + nB + nC + nAB + nBC
+    mAC = mode hACnorm
+    meanForCountSearch = sAC
+    nAClow = 0
+    nACup = maximum [nA, nB, nC, nAB, nBC]
     nACguess = min nAB nBC
     optimizeCount f = optimizeDbg f integerMiddle 20 nAClow nACup nACguess
 
     -- Using sqrt JSD as metric
-    nToSqrtJsd n = sqrtJsd (genTrim sAC n) hACnorm
+    nToSqrtJsd n = sqrtJsd (genTrim meanForCountSearch n) hACnorm
     memNToSqrtJsd = memoize nToSqrtJsd
     !nAC = optimizeCount memNToSqrtJsd
     !hACstv = genTrim sAC nAC
 
     -- Using std dev distance as metric
     stdDevAC = stdDev hACnorm
-    nToStdDevDiff n = abs ((stdDev (genTrim sAC n)) - stdDevAC)
+    nToStdDevDiff n = abs ((stdDev (genTrim meanForCountSearch n)) - stdDevAC)
     memNToStdDevDiff = memoize nToStdDevDiff
     !nACStdDev = optimizeCount memNToStdDevDiff
     !hACStdDevStv = genTrim sAC nACStdDev

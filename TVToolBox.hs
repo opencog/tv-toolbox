@@ -94,7 +94,7 @@ type Dist = Map MyFloat MyFloat
 ---------------
 
 defaultK :: Integer
-defaultK = 10000
+defaultK = 5000
 
 -- Used to convert count from/to confidence
 defaultSTVK :: Integer

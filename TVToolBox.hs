@@ -19,12 +19,15 @@ module TVToolBox (-- Types
                   genDist_beta_contin,
                   prob,
                   prob_beta,
+                  prob_only_beta,
                   pdf_beta,
+                  pdf_only_beta,
                   toDist,
                   discretize,
                   trim,
                   normalize,
                   mean,
+                  mode,
                   stdDev,
                   sqrtJsd,
                   -- Indefinite TV
@@ -219,11 +222,9 @@ prob n x k cx = fromRational (num % den)
 
 -- Version of choose that takes fractional values as second
 -- argument. Can be more accurate for lower n.
-choose_beta :: Integer -> MyFloat -> Integer
-choose_beta n k | n < defaultBetaThreshold =
-                    round (1.0 / ((nreal+1.0) * beta (nreal-k+1) (k+1)))
-                | otherwise = choose n (round k)
-    where nreal = (fromInteger n) :: MyFloat
+choose_beta :: Integer -> MyFloat -> MyFloat
+choose_beta n k = 1.0 / ((nreal+1.0) * beta (nreal-k+1) (k+1))
+  where nreal = fromInteger n
 
 -- P((p*100)% success in n+k trials | (s*100)% success in n trials)
 --
@@ -238,27 +239,47 @@ choose_beta n k | n < defaultBetaThreshold =
 -- instead, which is a pdf instead of a probability, that would sum up
 -- to one if integrated.
 prob_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
-prob_beta n s k p = fromRational (num % den)
-  where num = (n+1)*(choose_beta k (p*(nreal+kreal) - s*nreal))
-              *(choose_beta n (s*nreal))
-        den = (k+n+1)*(choose_beta (k+n) (p*(nreal+kreal)))
+prob_beta n s k p | cxreal < 0 || kreal < cxreal = 0
+                  | n+k < defaultBetaThreshold = num / den
+                  | otherwise = prob n x k cx
+  where num = (nreal+1)*(choose_beta k cxreal)*(choose_beta n xreal)
+        den = (nkreal+1)*(choose_beta (k+n) cxxreal)
         nreal = fromInteger n
         kreal = fromInteger k
+        nkreal = nreal + kreal
+        xreal = s*nreal
+        cxxreal = p*nkreal
+        cxreal = cxxreal - xreal
+        x = round xreal
+        cx = round cxreal
 
-prob_beta' :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
-prob_beta' n s k p = num / den
-  where num = beta (-cnreal*p + cnreal + 1) (cnreal*p + 1)
+-- Like prob_beta but using only the beta function. The formula has
+-- been obtained with Maxima (it has automatically simplified it by
+-- provided the unconditional version of prob_beta.
+prob_only_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
+prob_only_beta n s k p | cxreal < 0 || kreal < cxreal = 0
+                   | otherwise = num / den
+  where num = beta (nkreal*(1 - p) + 1) (nkreal*p + 1)
         den1 = kreal + 1
-        den2 = beta (-nreal*p + nreal + 1) (nreal*p + 1)
-        den3 = beta (-cnreal*s + nreal*p + kreal + 1) ((cnreal)*s - nreal*p + 1)
+        den2 = beta (nreal*(1-s) + 1) (nreal*s + 1)
+        den3 = beta (nkreal*p - nreal*s + 1) (nreal*s - nkreal*p + kreal + 1)
         den = den1 * den2 * den3
-        cnreal = nreal+kreal
         nreal = fromInteger n
         kreal = fromInteger k
+        nkreal = nreal + kreal
+        xreal = s*nreal
+        cxxreal = p*nkreal
+        cxreal = cxxreal - xreal
 
 -- Like prob_beta, except it is a pdf
 pdf_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
 pdf_beta n s k p = (nreal + kreal) * prob_beta n s k p
+  where nreal = fromInteger n
+        kreal = fromInteger k
+
+-- Like prob_only_beta, except it is a pdf
+pdf_only_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
+pdf_only_beta n s k p = (nreal + kreal) * prob_only_beta n s k p
   where nreal = fromInteger n
         kreal = fromInteger k
 

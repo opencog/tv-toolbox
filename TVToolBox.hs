@@ -367,7 +367,7 @@ indefiniteInterval b h = (low, up)
           step = 1.0 / (fromInteger defaultResolution)
           width l = (toUp h b l) - l
           jump = floatMiddle
-          low = optimizeDbg width jump step min_low max_low guess
+          low = optimize width jump step min_low max_low guess
           up = toUp h b low
 
 -- Return the width of a distribution
@@ -429,7 +429,7 @@ optimize fun jump step low up guess
           fgu = fun guess
           fls = fun ls
           frs = fun rs
-          rec_optimize = optimizeDbg fun jump step -- Simplified
+          rec_optimize = optimize fun jump step -- Simplified
                                                 -- recursive call of
                                                 -- optimize
 

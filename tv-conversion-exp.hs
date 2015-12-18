@@ -2,10 +2,11 @@
 
 import Control.Concurrent (threadDelay)
 import Data.Function.Memoize (memoize)
+import Data.Map (fromList)
 import System.Environment (getArgs)
 import Text.Format (format)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
-                                Attribute(Title, XLabel, YLabel, XRange),
+                                Attribute(Title, XLabel, YLabel, XRange, PNG),
                                 PlotStyle, defaultStyle,
                                 lineSpec, LineSpec(CustomStyle),
                                 LineAttr(LineTitle),

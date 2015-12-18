@@ -10,7 +10,7 @@ import Data.MultiMap (MultiMap, fromList, toMap, fromMap, mapKeys)
 import Data.Map (Map, map, toList, foldr, size, lookup, unionWith,
                  foldWithKey, empty, insertWith, filter)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
-                                Attribute(Title, XLabel, YLabel, XRange),
+                                Attribute(Title, XLabel, YLabel, XRange, PNG),
                                 PlotStyle, defaultStyle,
                                 lineSpec, LineSpec(CustomStyle),
                                 LineAttr(LineTitle))

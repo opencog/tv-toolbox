@@ -157,14 +157,15 @@ distSum d = Data.Map.foldr (+) 0 d
 -- corresponding (multi)-distribution.
 genDist :: MyFloat -> Integer -> Integer -> Dist
 genDist s n k =
-  Data.Map.fromList [(fromRational ((x+cx) % (n+k)), prob n x k cx) | cx <- [0..k]]
+  Data.Map.fromList [(p, prob n x k cx) | cx <- [0..k], let p = cx2p n s k cx]
   where x = strengthToCount s n
 
 -- Like genMultiDist but uses prob_beta, which might be more accurate
 -- when n is low.
 genDist_beta :: MyFloat -> Integer -> Integer -> Dist
 genDist_beta s n k =
-  Data.Map.fromList [(p, prob_beta n s k p) | cx <- [0..k], let p = cx2p n s k cx]
+  Data.Map.fromList [(p, prob_beta n s k p)
+                    | cx <- [0..k], let p = cx2p n s k cx]
 
 -- Like genMultiDist_beta but uses directly p instead of running cx
 -- from 0 to k. This is convenient to get an approximation of a

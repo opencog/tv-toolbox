@@ -142,12 +142,15 @@ main = do
   putStrLn ("hBC: " ++ (showDist hBC))
 
   let lineTitle name strength count =
-          format "{0}.tv(s={1}, n={2})" [name, show strength, show count]
-  plotDists False [(lineTitle "A" sA nA, hA),
-                   (lineTitle "B" sB nB, hB),
-                   (lineTitle "C" sC nC, hC),
-                   (lineTitle "AB" sAB nAB, hAB),
-                   (lineTitle "BC" sBC nBC, hBC)]
+          format "{0}.tv(s={1}, n={2})"
+          [name, show strength, show count]
+  plotDists
+    [(lineTitle "A" sA nA, hA),
+     (lineTitle "B" sB nB, hB),
+     (lineTitle "C" sC nC, hC),
+     (lineTitle "AB" sAB nAB, hAB),
+     (lineTitle "BC" sBC nBC, hBC)]
+    "PremisesDistributions" False False
 
   -- Compute the result of deduction
   let
@@ -183,24 +186,28 @@ main = do
     -- -- Using U-L distance as metric
     b = 0.9
     widthAC = indefiniteIntervalWidth b hACnorm
-    nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim sAC n)) - widthAC)
+    nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim meanForCountSearch n)) - widthAC)
     memNToWidthDiff = memoize nToWidthDiff
     !nACWidth = optimizeCount memNToWidthDiff
     !hACWidthStv = genTrim sAC nACWidth
 
   -- Plot the distributions using the found counts of all metrics
-  plotDists False [("AC", hACnorm),
-                   (lineTitle "AC" sAC nAC, hACstv),
-                   (lineTitle "ACStdDev" sAC nACStdDev, hACStdDevStv),
-                   (lineTitle "ACWidth" sAC nACWidth, hACWidthStv)]
-  plotDists True [("(zoom) AC", hACnorm),
-                  (lineTitle "(zoom) AC" sAC nAC, hACstv),
-                  (lineTitle "(zoom) ACStdDev" sAC nACStdDev, hACStdDevStv),
-                  (lineTitle "(zoom) ACWidth" sAC nACWidth, hACWidthStv)]
+  plotDists
+    [("AC", hACnorm),
+     (lineTitle "AC" sAC nAC, hACstv),
+     (lineTitle "ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
+     (lineTitle "ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
+    ("ACWithCounts-K_" ++ show k) False True
+  plotDists
+    [("(zoom) AC", hACnorm),
+     (lineTitle "(zoom) AC" sAC nAC, hACstv),
+     (lineTitle "(zoom) ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
+     (lineTitle "(zoom) ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
+    ("ACWithCounts-Zoom-K_" ++ show k) True True
 
   -- Plot the profile of each metric
   let
-    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,20..nACup]]
+    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,1..nACup]]
     !sqrtJsdProfile = n2funProfile memNToSqrtJsd
     !stdDevDiffProfile = n2funProfile memNToStdDevDiff
     !widthDiffProfile = n2funProfile memNToWidthDiff
@@ -208,7 +215,8 @@ main = do
   -- Sqrt JSD
   putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"
             [show (length sqrtJsdProfile), show sqrtJsdProfile])
-  plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt"]
+  plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt",
+                 PNG "JSDSqrtProfile.png"]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
                 sqrtJsdProfile
 
@@ -216,15 +224,17 @@ main = do
   putStrLn (format "stdStdDevDiffProfile: size = {0}, data = {1}"
             [show (length stdDevDiffProfile), show stdDevDiffProfile])
   plotPathStyle [Title "Std dev diff w.r.t. nAC",
-                 XLabel "nAC", YLabel "Std dev diff"]
+                 XLabel "nAC", YLabel "Std dev diff",
+                 PNG "StdDevDiffProfile.png"]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
                 stdDevDiffProfile
 
   -- Width distance
-  putStrLn (format "stdWidthDiffProfile: size = {0}, data = {1}"
+  putStrLn (format "WidthDiffProfile: size = {0}, data = {1}"
             [show (length widthDiffProfile), show widthDiffProfile])
   plotPathStyle [Title "Width diff w.r.t. nAC",
-                 XLabel "nAC", YLabel "Width diff"]
+                 XLabel "nAC", YLabel "Width diff",
+                 PNG "widthDiffStdProfile.png"]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "Width diff"]})
                 widthDiffProfile
 

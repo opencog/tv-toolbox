@@ -54,7 +54,7 @@ import Data.Map (Map, map, fromList, toList, foldr, size, lookup, unionWith,
 -- import Data.List (length)
 import Debug.Trace (trace)
 import Graphics.Gnuplot.Simple (plotPathStyle, plotPathsStyle,
-                                Attribute(Title, XLabel, YLabel, XRange),
+                                Attribute(Title, XLabel, YLabel, XRange, PNG),
                                 PlotStyle, defaultStyle,
                                 lineSpec, LineSpec(CustomStyle),
                                 LineAttr(LineTitle))
@@ -106,23 +106,20 @@ defaultResolution = 100
 -- If n is below that threshold, then choose_beta, and prob_beta is
 -- used instead of choose or prob.
 defaultBetaThreshold :: Integer
-defaultBetaThreshold = 1000
+defaultBetaThreshold = 140
 
 --------------
 -- Plotting --
 --------------
 
 -- Plot distributions, specifying whether to enable zoom or not.
-plotDists :: Bool -> [(String, Dist)] -> IO ()
-plotDists zoom nhs = plotPathsStyle attributes (Prelude.map fmt nhs)
-    where attributes = [defaultTitle, XLabel "Strength", YLabel "Probability"]
-                       ++ if zoom then [] else [XRange (0.0, 1.0)]
-          fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]},
-                        toPath h)
-
--- Like plotDists but plot only one distribution
-plotDist :: Bool -> String -> Dist -> IO ()
-plotDist zoom name h = plotDists zoom [(name, h)]
+plotDists :: [(String, Dist)] -> String -> Bool -> Bool -> IO ()
+plotDists nhs title zoom save = plotPathsStyle attributes (Prelude.map fmt nhs)
+  where attributes = [Title title, XLabel "Strength", YLabel "Probability"]
+                     ++ (if zoom then [] else [XRange (0.0, 1.0)])
+                     ++ (if save then [PNG (title ++ ".png")] else [])
+        fmt (n, h) = (defaultStyle {lineSpec = CustomStyle [LineTitle n]},
+                      toPath h)
 
 -- Turn a distribution into a plotable path
 toPath :: Dist -> [(Double, Double)]

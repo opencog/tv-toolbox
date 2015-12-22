@@ -237,6 +237,8 @@ in the figure below (obtained with `mean-mode-exp.hs`).
 
 ![](https://github.com/opencog/tv-toolbox/blob/master/plots/modeToMean-n_0_30_k100.png)
 
+TODO: add fig of distribution with low n with low or high strength. 
+
 However, the strength is equal to its mode whenever k is even or k
 tends to infinity. See
 

@@ -164,8 +164,12 @@ genDist s n k =
 -- when n is low.
 genDist_beta :: MyFloat -> Integer -> Integer -> Dist
 genDist_beta s n k =
-  Data.Map.fromList [(p, prob_beta n s k p)
-                    | cx <- [0..k], let p = cx2p n s k cx]
+  Data.Map.fromList
+  -- (trace (format "genDist_beta {0} {1} {2}"
+  --                           [show s, show n, show k])
+                      [(p, prob_beta n s k p)
+                     | cx <- [0..k], let p = cx2p n s k cx]
+  -- )
 
 -- Like genMultiDist_beta but uses directly p instead of running cx
 -- from 0 to k. This is convenient to get an approximation of a

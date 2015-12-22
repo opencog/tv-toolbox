@@ -65,10 +65,11 @@ main = do
           uly = (getp (lookupLE l h) + getp (lookupLE u h)) / 2
 
   putStrLn ("hA: " ++ (showDist hA))
-  plotDists False [(lineTitle "A" sA nA, hA),
-                   (ulTitle lA uA, ulDist lA uA hA)]
-                   -- (ulTitle lA uA, ulDist lA uA hA),
-                   -- ("Width profile (*0.1)", widthProfile)]
+  plotDists
+    [(lineTitle "A" sA nA, hA),
+     (ulTitle lA uA, ulDist lA uA hA)]
+    (format "itv-s_{0}_n_{1}_k_{2}" [show sA, show nA, show k])
+    False True
 
-  threadDelay 100000000000
+  -- threadDelay 100000000000
 

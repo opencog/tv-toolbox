@@ -199,13 +199,13 @@ main = do
      (lineTitle "AC" sAC nAC, hACstv),
      (lineTitle "ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
      (lineTitle "ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
-    ("ACWithCounts-K_" ++ show k) False True
+    ("plots/ACWithCounts-Raw-k_" ++ show k) False True
   plotDists
     [("(zoom) AC", hACnorm),
      (lineTitle "(zoom) AC" sAC nAC, hACstv),
      (lineTitle "(zoom) ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
      (lineTitle "(zoom) ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
-    ("ACWithCounts-Zoom-K_" ++ show k) True True
+    ("plots/ACWithCounts-Raw-Zoom-k_" ++ show k) True True
 
   -- Plot the profile of each metric
   let
@@ -218,7 +218,7 @@ main = do
   putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"
             [show (length sqrtJsdProfile), show sqrtJsdProfile])
   plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt",
-                 PNG "JSDSqrtProfile.png"]
+                 PNG (format "plots/JSDSqrtProfile-k_{0}.png" [show k])]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
                 sqrtJsdProfile
 
@@ -227,7 +227,7 @@ main = do
             [show (length stdDevDiffProfile), show stdDevDiffProfile])
   plotPathStyle [Title "Std dev diff w.r.t. nAC",
                  XLabel "nAC", YLabel "Std dev diff",
-                 PNG "StdDevDiffProfile.png"]
+                 PNG (format "plots/StdDevDiffProfile-k_{0}.png" [show k])]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
                 stdDevDiffProfile
 
@@ -236,8 +236,8 @@ main = do
             [show (length widthDiffProfile), show widthDiffProfile])
   plotPathStyle [Title "Width diff w.r.t. nAC",
                  XLabel "nAC", YLabel "Width diff",
-                 PNG "widthDiffStdProfile.png"]
+                 PNG (format "plots/widthDiffStdProfile-k_{0}.png" [show k])]
                 (defaultStyle {lineSpec = CustomStyle [LineTitle "Width diff"]})
                 widthDiffProfile
 
-  threadDelay 100000000000
+  -- threadDelay 100000000000

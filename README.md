@@ -19,7 +19,7 @@ with!):
      dwelling pretty deep, there are still knowledge holes to fill, so
      I need a convenient platform to experiment on, which Haskell
      provides, due to its multi-sided scripting, native, interpreting
-     nature, as well as it's gnuplot binding.
+     nature, as well as its gnuplot binding.
 
   2. Haskell has pretty much unlimited integer and floating precision,
      which is very convenient to tell apart numerical errors from
@@ -43,7 +43,7 @@ To use the module see directly TVToolBox.hs for the functions it
 implements. Besides that there are several files using it which
 demonstrate the main functions. Each file can be directly executed as
 a script (no need to compile them). Here's a short description of each
-of them. For a indepth description see Section Description.
+of them. For a indepth description see Section Experiment Report.
 
 * Plot Distributional TVs given STVs
 
@@ -147,7 +147,7 @@ See figures (obtained with `dtv-exp.hs`)
 for 3d plots of distributions obtained from simple TVs, varying the
 strength, the count and the lookahead. As you may see the
 corresponding distributions are a narrower when k is low. But I don't
-think this alone a good reason to set k as a low value while doing
+think this alone is a good reason to set k as a low value while doing
 inferences. The real question is whether the width of the infered TVs
 grows at a higher rate as measure as inferences progress when k is
 high versus low. The PLN book seems to say that is the case, I
@@ -174,14 +174,14 @@ for the results of this optimization.
 ### DTV to STV
 
 In order to convert a DTV back to an STV we need to find the strength
-and the count that fits the most a given distributional TV.
+and the count that best fits a given distributional TV.
 
 It may be quite important to get an accurate conversion from DTV to
 STV when applying formula using DTV internally but STV externally. The
 problem of course is that the DTV of a conclusion may not fit well the
-DTV corresponding to some STV. According to preliminary experiments it
-seems it does fit well enough though, indicating that STV on steroid
-(see Section STV on Steroid) might work well enough.
+an STV. However, according to preliminary experiments it seems it does
+fit well, indicating that STV on steroid (see Section STV on Steroid)
+might work well enough.
 
 For the strength we take the mode of the distributional TV, rather
 than its mean. For an explanation as to why we take the mode see the
@@ -227,7 +227,7 @@ conclusion AC. See figures
 for distributional TV and then estimated nearest STVs according to
 these 3 fitness functions. As you may see the stdDev based count
 optimization yield the best result in this case, clearly just due to
-the fact that it doesn't have to deal with the noise.
+the fact that it doesn't have to deal with noise.
 
 ### Mode vs mean
 

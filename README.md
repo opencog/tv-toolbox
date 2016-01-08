@@ -140,9 +140,9 @@ experiment with both small and large n+k.
 
 See figures (obtained with `dtv-exp.hs`)
 
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/pdf_s_0.5_n_10_k_1_100.png)
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/pdf_s_0.7_n_1000_k_1_1000.png)
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/pdf_s_0.2_n_100000_k_1_1000.png)
+![](plots/pdf_s_0.5_n_10_k_1_100.png)
+![](plots/pdf_s_0.7_n_1000_k_1_1000.png)
+![](plots/pdf_s_0.2_n_100000_k_1_1000.png)
 
 for 3d plots of distributions obtained from simple TVs, varying the
 strength, the count and the lookahead. As you may see the
@@ -220,14 +220,14 @@ just works.
 
 See figures (obtained with `deduction-exp.hs`)
 
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/JSDSqrtProfile-k_5000.png)
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/StdDevDiffProfile-k_5000.png)
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/widthDiffStdProfile-k_5000.png)
+![](plots/JSDSqrtProfile-k_5000.png)
+![](plots/StdDevDiffProfile-k_5000.png)
+![](plots/widthDiffStdProfile-k_5000.png)
 
 for profile comparisons of the 3 fitness functions for a deduction
 conclusion AC. See figures
 
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/ACWithCounts-Zoom-K_5000.png)
+![](plots/ACWithCounts-Zoom-K_5000.png)
 
 for distributional TV and then estimated nearest STVs according to
 these 3 fitness functions. As you may see the stdDev based count
@@ -240,7 +240,7 @@ The mean of a distribution associated to an STV differs from it's
 strength. This difference is very significant when n is low, as shown
 in the figure below (obtained with `mean-mode-exp.hs`).
 
-![](https://github.com/opencog/tv-toolbox/blob/master/plots/modeToMean-n_0_30_k100.png)
+![](plots/modeToMean-n_0_30_k100.png)
 
 TODO: add fig of distribution with low n with low or high strength. 
 

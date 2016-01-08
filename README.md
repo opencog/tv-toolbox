@@ -264,11 +264,29 @@ it yet, but I'm pretty sure it's true).
 
 ## Deduction using DTV
 
-TODO.
+We focus here solely on the deduction rule. It is probably the most
+important one in PLN, but also perhaps the hardest to "put on steroid"
+because it has many premises, 5 in total, AB, BC, A, B, C.
+
+To obtain the DTV of a conclusion we
+
+1. Generate the DTV corresponding to each premises
+2. TODO: sample blahblah
+
+TODO. See figures
+
+![](plots/deduction-premises.png)
+![](plots/deduction-conclusion.png)
+
+## STV on steroid
+
+TODO
 
 ## Further work
 
 TODO (in brief):
+- [ ] Improve mode so that it returns the one closer to the mean if
+  there are several, or maybe return the average of the modes
 - [ ] Look at whether the rate of distribution widening increases when
   k is greater (rate of n, and U-L).
 - [ ] Attempt to infer some STV formulae using DTV internally (STV

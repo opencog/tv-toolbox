@@ -150,7 +150,7 @@ main = do
      (lineTitle "C" sC nC, hC),
      (lineTitle "AB" sAB nAB, hAB),
      (lineTitle "BC" sBC nBC, hBC)]
-    "PremisesDistributions" False False
+    "plots/deduction-premises" False True
 
   -- Compute the result of deduction
   let
@@ -164,8 +164,11 @@ main = do
 
   -- Find the resulting distribution count
   let
-    sAC = mean hACnorm
-    mAC = mode hACnorm
+    -- We use the mode rather than the mean to specify the strength of
+    -- the conclusion (see README.md for the explanation)
+    sAC = mode hACnorm
+    -- sAC = mean hACnorm
+
     meanForCountSearch = sAC
     nAClow = 0
     nACup = maximum [nA, nB, nC, nAB, nBC]
@@ -193,51 +196,57 @@ main = do
     !nACWidth = optimizeCount memNToWidthDiff
     !hACWidthStv = genTrim sAC nACWidth
 
-  -- Plot the distributions using the found counts of all metrics
+  -- Plot the distributions using only StdDev metric
   plotDists
     [("AC", hACnorm),
-     (lineTitle "AC" sAC nAC, hACstv),
-     (lineTitle "ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
-     (lineTitle "ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
-    ("plots/ACWithCounts-Raw-k_" ++ show k) False True
-  plotDists
-    [("(zoom) AC", hACnorm),
-     (lineTitle "(zoom) AC" sAC nAC, hACstv),
-     (lineTitle "(zoom) ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
-     (lineTitle "(zoom) ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
-    ("plots/ACWithCounts-Raw-Zoom-k_" ++ show k) True True
+     (lineTitle "AC-STV-approximation" meanForCountSearch nACStdDev, hACStdDevStv)]
+    "plots/deduction-conclusion" False True
 
-  -- Plot the profile of each metric
-  let
-    n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,1..nACup]]
-    !sqrtJsdProfile = n2funProfile memNToSqrtJsd
-    !stdDevDiffProfile = n2funProfile memNToStdDevDiff
-    !widthDiffProfile = n2funProfile memNToWidthDiff
+  -- -- Plot the distributions using the found counts of all metrics
+  -- plotDists
+  --   [("AC", hACnorm),
+  --    (lineTitle "AC" sAC nAC, hACstv),
+  --    (lineTitle "ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
+  --    (lineTitle "ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
+  --   ("plots/ACWithCounts-Raw-k_" ++ show k) False True
+  -- plotDists
+  --   [("(zoom) AC", hACnorm),
+  --    (lineTitle "(zoom) AC" sAC nAC, hACstv),
+  --    (lineTitle "(zoom) ACStdDev" meanForCountSearch nACStdDev, hACStdDevStv),
+  --    (lineTitle "(zoom) ACWidth" meanForCountSearch nACWidth, hACWidthStv)]
+  --   ("plots/ACWithCounts-Raw-Zoom-k_" ++ show k) True True
 
-  -- Sqrt JSD
-  putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"
-            [show (length sqrtJsdProfile), show sqrtJsdProfile])
-  plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt",
-                 PNG (format "plots/JSDSqrtProfile-k_{0}.png" [show k])]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
-                sqrtJsdProfile
+  -- -- Plot the profile of each metric
+  -- let
+  --   n2funProfile fun = [(fromIntegral n, fun n) | n <- [nAClow,1..nACup]]
+  --   !sqrtJsdProfile = n2funProfile memNToSqrtJsd
+  --   !stdDevDiffProfile = n2funProfile memNToStdDevDiff
+  --   !widthDiffProfile = n2funProfile memNToWidthDiff
 
-  -- Std dev distance
-  putStrLn (format "stdStdDevDiffProfile: size = {0}, data = {1}"
-            [show (length stdDevDiffProfile), show stdDevDiffProfile])
-  plotPathStyle [Title "Std dev diff w.r.t. nAC",
-                 XLabel "nAC", YLabel "Std dev diff",
-                 PNG (format "plots/StdDevDiffProfile-k_{0}.png" [show k])]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
-                stdDevDiffProfile
+  -- -- Sqrt JSD
+  -- putStrLn (format "sqrtJsdProfile: size = {0}, data = {1}"
+  --           [show (length sqrtJsdProfile), show sqrtJsdProfile])
+  -- plotPathStyle [Title "JSD w.r.t. nAC", XLabel "nAC", YLabel "JSD sqrt",
+  --                PNG (format "plots/JSDSqrtProfile-k_{0}.png" [show k])]
+  --               (defaultStyle {lineSpec = CustomStyle [LineTitle "JSD sqrt"]})
+  --               sqrtJsdProfile
 
-  -- Width distance
-  putStrLn (format "WidthDiffProfile: size = {0}, data = {1}"
-            [show (length widthDiffProfile), show widthDiffProfile])
-  plotPathStyle [Title "Width diff w.r.t. nAC",
-                 XLabel "nAC", YLabel "Width diff",
-                 PNG (format "plots/widthDiffStdProfile-k_{0}.png" [show k])]
-                (defaultStyle {lineSpec = CustomStyle [LineTitle "Width diff"]})
-                widthDiffProfile
+  -- -- Std dev distance
+  -- putStrLn (format "stdStdDevDiffProfile: size = {0}, data = {1}"
+  --           [show (length stdDevDiffProfile), show stdDevDiffProfile])
+  -- plotPathStyle [Title "Std dev diff w.r.t. nAC",
+  --                XLabel "nAC", YLabel "Std dev diff",
+  --                PNG (format "plots/StdDevDiffProfile-k_{0}.png" [show k])]
+  --               (defaultStyle {lineSpec = CustomStyle [LineTitle "Std dev diff"]})
+  --               stdDevDiffProfile
+
+  -- -- Width distance
+  -- putStrLn (format "WidthDiffProfile: size = {0}, data = {1}"
+  --           [show (length widthDiffProfile), show widthDiffProfile])
+  -- plotPathStyle [Title "Width diff w.r.t. nAC",
+  --                XLabel "nAC", YLabel "Width diff",
+  --                PNG (format "plots/widthDiffStdProfile-k_{0}.png" [show k])]
+  --               (defaultStyle {lineSpec = CustomStyle [LineTitle "Width diff"]})
+  --               widthDiffProfile
 
   -- threadDelay 100000000000

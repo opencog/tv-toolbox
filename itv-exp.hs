@@ -26,10 +26,10 @@ import TVToolBox
 main :: IO ()
 main = do
   let
-    sA = 0.3
-    nA = 100
-    k = defaultK
-    resolution = defaultResolution       -- number of bins in the distribution
+    sA = 0.7
+    nA = 1000
+    k = 50 -- defaultK
+    resolution = 10000 -- defaultResolution       -- number of bins in the distribution
 
   -- Calculate corresponding count
   let
@@ -39,7 +39,7 @@ main = do
   -- Generate corresponding distribution
   let
     trimDis = (trim 1e-10) . (discretize resolution)
-    genTrim s n = trimDis (genDist s n k)
+    genTrim s n = trimDis (genDist_beta s n k)
     !hA = genTrim sA nA
 
   putStrLn ("hA: " ++ (showDist hA))
@@ -68,7 +68,7 @@ main = do
   plotDists
     [(lineTitle "A" sA nA, hA),
      (ulTitle lA uA, ulDist lA uA hA)]
-    (format "itv-s_{0}_n_{1}_k_{2}" [show sA, show nA, show k])
+    (format "plots/itv-s_{0}_n_{1}_k_{2}" [show sA, show nA, show k])
     False True
 
   -- threadDelay 100000000000

@@ -165,9 +165,14 @@ the cumulative probability between L and U is equal to b or
 greater. The optimization algo is a mere bisective search (with some
 parameters to overcome the presence of noise).
 
-See figures (obtained with `itv-exp.hs`)
+See figures (obtained with `itv-exp.hs`) showing the indefinite intervals for different strengths and counts (k=5000).
 
-TODO
+![](plots/itv-s_0.3_n_100_k_5000.png)
+![](plots/itv-s_0.5_n_10_k_5000.png)
+![](plots/itv-s_0.7_n_1000_k_5000.png)
+![](plots/itv-s_0.3_n_100_k_50.png)
+![](plots/itv-s_0.5_n_10_k_50.png)
+![](plots/itv-s_0.7_n_1000_k_50.png)
 
 for the results of this optimization.
 

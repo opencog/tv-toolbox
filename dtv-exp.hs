@@ -22,7 +22,7 @@ main :: IO ()
 main = do
   let
     sA = 1.0
-    nA = 1
+    nA = 100
     k = 100
     resolution = defaultResolution       -- number of bins in the distribution
 
@@ -49,7 +49,7 @@ main = do
   plotDists
     -- [(lineTitle "A" sA nA meanA, dA),
      [(lineTitle "Abeta" sA nA meanAbeta, dAbeta)]
-    (format "plots/DTV-s_{0}_n_{1}_k_{2}" [show sA, show nA, show k])
+    (format "plots/dtv-s_{0}_n_{1}_k_{2}" [show sA, show nA, show k])
     False True
 
   -- -- Plot in 3d the pdf varying k
@@ -58,7 +58,7 @@ main = do
   --   maxk = 1000
   --   strs = [show sA, show nA, show mink, show maxk]
   -- plotFunc3d [Title (format "pdf(<s={0},n={1}>) k=[{2}..{3}]" strs),
-  --             PNG (format "plots/pdf_s_{0}_n_{1}_k_{2}_{3}.png" strs)]
+  --             PNG (format "plots/pdf-s_{0}_n_{1}_k_{2}_{3}.png" strs)]
   --   [] [0.0,0.001..1.0] [mink..maxk] (\p k -> pdf_beta nA sA k p)
   -- -- plotFunc3d [] [] [0.0,0.001..1.0] [1..500] (\p k -> pdf_only_beta nA sA k p)
 

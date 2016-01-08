@@ -165,7 +165,7 @@ the cumulative probability between L and U is equal to b or
 greater. The optimization algo is a mere bisective search (with some
 parameters to overcome the presence of noise).
 
-See figures (obtained with `itv-exp.hs`) showing the indefinite intervals for different strengths and counts (k=5000).
+See figures (obtained with `itv-exp.hs`) showing the indefinite intervals for different strengths, counts and lookaheads.
 
 ![](plots/itv-s_0.3_n_100_k_5000.png)
 ![](plots/itv-s_0.5_n_10_k_5000.png)
@@ -173,8 +173,6 @@ See figures (obtained with `itv-exp.hs`) showing the indefinite intervals for di
 ![](plots/itv-s_0.3_n_100_k_50.png)
 ![](plots/itv-s_0.5_n_10_k_50.png)
 ![](plots/itv-s_0.7_n_1000_k_50.png)
-
-for the results of this optimization.
 
 ### DTV to STV
 
@@ -241,11 +239,11 @@ strength. This difference is very significant when n is low, as shown
 in the figure below (obtained with `mean-mode-exp.hs`).
 
 ![](plots/modeToMean-n_0_30_k100.png)
+![](plots/dtv-s_0.1_n_10_k_100.png)
+![](plots/dtv-s_0.1_n_100_k_100.png)
 
-TODO: add fig of distribution with low n with low or high strength. 
-
-However, the strength is equal to its mode whenever k is even or k
-tends to infinity. See
+Clearly, the strength of an STV is equal to its DTV mode whenever k is
+even or k tends to infinity. See
 
 ```
 P(x+X successes in n+k trials | x successes in n trials)
@@ -261,14 +259,8 @@ Removing constant factors we obtain
 max_X (choose k X) / (choose (k+n) (X+x))
 ```
 
-as choose n k is maximized when k=n/2 (EDIT: I didn't manage to proove
+as choose n k is maximized when k=n/2 (TODO: I didn't manage to proove
 it yet, but I'm pretty sure it's true).
-
-It should be noted therefore that for low n, the naive PLN formulae
-are probably wrong on the strength calculations as well, not just the
-count. The premises means should probably used instead of the
-strengths. The conclusion's mean should then be translated back into a
-strength (i.e. a mode).
 
 ## Deduction using DTV
 

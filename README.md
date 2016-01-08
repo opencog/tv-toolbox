@@ -140,9 +140,9 @@ experiment with both small and large n+k.
 
 See figures (obtained with `dtv-exp.hs`)
 
-![](plots/pdf_s_0.5_n_10_k_1_100.png)
-![](plots/pdf_s_0.7_n_1000_k_1_1000.png)
-![](plots/pdf_s_0.2_n_100000_k_1_1000.png)
+![](plots/pdf-s_0.5_n_10_k_1_100.png)
+![](plots/pdf-s_0.7_n_1000_k_1_1000.png)
+![](plots/pdf-s_0.2_n_100000_k_1_1000.png)
 
 for 3d plots of distributions obtained from simple TVs, varying the
 strength, the count and the lookahead. As you may see the

@@ -290,6 +290,20 @@ cx2p :: Integer -> MyFloat -> Integer -> Integer -> MyFloat
 cx2p n s k cx = (s*nreal + cxreal) / (nreal+kreal)
     where [nreal, kreal, cxreal] = Prelude.map fromInteger [n, k, cx]
 
+-- Compute the pdf of Chapter 6, page 136
+--
+--             x^(k*s)*(1-x)^(k*(1-s))*x^(n*p)*(1-x)^(n*(1-p))
+-- f(x) = ----------------------------------------------------------
+--        Int_0^1 x^(k*s)*(1-x)^(k*(1-s))*x^(n*p)*(1-x)^(n*(1-p)) dx
+--
+--
+--             x^[(k*s)+(n*p)]*(1-x)^[(k*(1-s))+(n*(1-p))]
+-- f(x) = ----------------------------------------------------------
+--        Int_0^1 x^(k*s)*(1-x)^(k*(1-s))*x^(n*p)*(1-x)^(n*(1-p)) dx
+--
+-- TODO: that doesn't make sense
+pdf_chapter_6 = undefined
+
 -- Compute the Kullback-Leibler divergence from hP to hQ. It assumes
 -- that hQ has the same support as hP or greater, and that their
 -- probabilities are non-null.

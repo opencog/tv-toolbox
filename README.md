@@ -127,8 +127,12 @@ P((p*100)% success in n+k trials | (s*100)% success in n trials)
 (k+1)*beta(-n*s+n+1, n*s+1)*beta(- n*s+(n+k)*p+1, n*s-(n+k)*p+k+1)
 ```
 
-(EDIT: It might be equivalent to the formula in Chapter 6. TODO:
-compare them numerically).
+It might be equivalent to the formula in Chapter 6. Unfortunately I
+cannot make any sense of that one (s is multipled by k, while p is
+multipled by n, contrary to here, and previous notations in the PLN
+book, it's not just an inversion, p should be multipled by (n+k), so I
+don't know how to fix/use it). TODO: attempt to make sense of it
+anyway.
 
 When n+k it large, this continuous version gets very imprecise (this
 is an implementation limit, not a limit on Haskell's floating number

@@ -389,7 +389,10 @@ In brief:
 - [ ] STV inference on steroid
 - [ ] Re-implement C++ double sampling in Haskell and compare with
   current single sampling results
-- [ ] Implement Monte-Carlos instead of full product
+- [ ] Try to make sense of Chapter 7 on distributional TV inference.
+- [ ] Implement Monte-Carlos instead of full
+  convolution. Alternatively, make discretization merge bins with too
+  low probability (better than trimming).
 
 Maxima
 ------

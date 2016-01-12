@@ -334,12 +334,15 @@ because it has many premises, 5 in total, AB, BC, A, B, C.
 
 To obtain the DTV of a conclusion we
 
-1. Generate the DTV corresponding to each premises
-2. Sample the DTVs of all premises
-3. Check the consistency of the sampled probabilities
+1. Generate the DTV corresponding to each premises (see Subsection STV
+   to DTV).
+2. Sample the DTVs of all premises.
+3. Check the consistency of the sampled probabilities.
 4. If they are consistent, calculate the resulting strength using the
    deduction formula. Use this value as sample of the DTV's
    conclusion.
+5. Convert the resulting DTV back to an STV (see Subsection DTV to
+   STV).
 
 Note that for now sampling the DTV merely is done in brute force, just
 enumerating all discretized strengths weighted by their second order
@@ -355,26 +358,35 @@ TODO: possibly implement Monte Carlos sampling.
 
 The idea of STV inference on steroid is to generate simple, efficient
 and hopefully accurate inference formulae over STVs based on DTVs
-internally. That may recall how modern digital mixing consoles work,
-performing internal signal processing in 48-bit while inputting and
-outputting signal in 24-bit.
+internal computations. Think of a digital mixing consoles performing
+internal signal processing in 48-bit while inputting and outputting
+signal in 24-bit coupled with super-compilation.
 
-In detail, given a certain inference rule accompanied with its formula
-`f`, we would
+Given a certain inference rule accompanied with its formula `f` it
+would
 
-TODO
+1. Randomly pick input STVs, varying strengths and confidences and
+   compute the resulting STV
+   1. Turn them into DTVs
+   2. Compute the resulting DTV using `f`
+   3. Converte the resulting DTV into an STV
+2. Record in a dataset all input STVs (strength and confidence) and
+   their corresponding output STV. Try to gather a large number of
+   individuals, ideally around `r*exp(2*m)`, with `r=10` and `m` equal
+   to the number of premises.
+3. Given the dataset use multivariate polynomial regression to find a
+   model that accurately compute the resulting STV given the STVs of
+   the premises. The model would be composed of 2 multivariate
+   polynomials, one for the strength, one for the confidence.
 
 ## Further Work
 
-TODO (in brief):
+In brief:
+
 - [ ] Improve mode so that it returns the one closer to the mean if
   there are several, or maybe return the average of the modes
-- [ ] Look at whether the rate of distribution widening increases when
-  k is greater (rate of n, and U-L).
-- [ ] Attempt to infer some STV formulae using DTV internally (STV
-  formulae on steroid, although I've realized this might not be
-  feasable for formulae involving more than a couple of premises, the
-  deduction formula has already 5 premises, though, but anyway)
+- [ ] Look at whether the width of the DTV increases w.r.t. k
+- [ ] STV inference on steroid
 - [ ] Re-implement C++ double sampling in Haskell and compare with
   current single sampling results
 - [ ] Implement Monte-Carlos instead of full product

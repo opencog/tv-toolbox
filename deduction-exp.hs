@@ -113,7 +113,7 @@ main = do
     sBC = 0.9
     nBC = 500
     k = defaultK
-    resolution = defaultResolution       -- number of bins in the distribution
+    resolution = 200 -- defaultResolution       -- number of bins in the distribution
 
   -- Calculate corresponding counts
   let
@@ -127,7 +127,7 @@ main = do
 
   -- Generate corresponding distributions
   let
-    trimDis = (trim 1e-10) . (discretize resolution)
+    trimDis = (trim 1e-6) . (discretize resolution)
     genTrim s n = trimDis (genDist s n k)
     !hA = genTrim sA nA
     !hB = genTrim sB nB
@@ -154,7 +154,9 @@ main = do
 
   -- Compute the result of deduction
   let
-    !hAC = trimDis (fullDeduction hA hB hC hAB hBC)
+    !hACraw = fullDeduction hA hB hC hAB hBC
+    !hAC = trimDis hACraw
+  putStrLn ("hACraw: " ++ (showDist hACraw))
   putStrLn ("hAC: " ++ (showDist hAC))
 
   -- Normalize the distribution

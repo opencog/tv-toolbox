@@ -89,7 +89,7 @@ used here. Maybe this will help me to see the light, and if not I'll
 still gather knowledge to make informed implementational decisions
 regarding TV conversion and formula calculation in the C++ code.
 
-## TV conversion
+## TV Conversion
 
 ### STV to DTV
 
@@ -129,10 +129,11 @@ P((p*100)% success in n+k trials | (s*100)% success in n trials)
 
 It might be equivalent to the formula in Chapter 6. Unfortunately I
 cannot make any sense of that one (s is multipled by k, while p is
-multipled by n, contrary to here, and previous notations in the PLN
-book, it's not just an inversion, p should be multipled by (n+k), so I
+multipled by n, contrary to here and previous notations in the PLN
+book, and it's not just a swap, p should be multipled by (n+k). I
 don't know how to fix/use it). TODO: attempt to make sense of it
-anyway.
+anyway, or reimplement here the double sampling in the obsolete C++
+PLN code (see the obsolete-C++-PLN tag on the opencog repo).
 
 When n+k it large, this continuous version gets very imprecise (this
 is an implementation limit, not a limit on Haskell's floating number
@@ -187,8 +188,8 @@ It may be quite important to get an accurate conversion from DTV to
 STV when applying formula using DTV internally but STV externally. The
 problem of course is that the DTV of a conclusion may not fit well the
 an STV. However, according to preliminary experiments it seems it does
-fit well, indicating that STV on steroid (see Section STV on Steroid)
-might work well enough.
+fit well, indicating that STV inference on steroid (see Section STV
+Inference on Steroid) might work well enough.
 
 For the strength we take the mode of the distributional TV, rather
 than its mean. For an explanation as to why we take the mode see the
@@ -246,47 +247,124 @@ in the figure below (obtained with `mean-mode-exp.hs`).
 ![](plots/dtv-s_0.1_n_10_k_100.png)
 ![](plots/dtv-s_0.1_n_100_k_100.png)
 
-Clearly, the strength of an STV is equal to its DTV mode whenever k is
-even or k tends to infinity. See
+It's been numerically observed that strength of an STV is equal to the
+mode of its DTV (whenever k*x is divisible by n, or k tends to
+infinity).
+
+Here's a half-finished proof of it.
+
+Given
+
+```
+    x
+s = -
+    n
+
+    x+X
+p = ---
+    n+k
+```
+
+we want to proove that P (from Section 4.5.1 of the PLN book) is
+maximized when `p = s`, that is
+
+```
+    k*x
+X = ---
+     n
+```
+
+Let's look at P:
 
 ```
 P(x+X successes in n+k trials | x successes in n trials)
 =
 (n+1)*(choose k X)*(choose n x)
---------------------------------
+-------------------------------
  (k+n+1)*(choose (k+n) (X+x))
 ```
 
 Removing constant factors we obtain
 
 ```
-max_X (choose k X) / (choose (k+n) (X+x))
+    choose k X
+------------------
+choose (k+n) (X+x)
 ```
 
-as choose n k is maximized when k=n/2 (TODO: I didn't manage to proove
-it yet, but I'm pretty sure it's true).
+We want to show that following
 
-## Deduction using DTV
+```
+    k*x
+X = ---
+     n
+```
 
-We focus here solely on the deduction rule. It is probably the most
-important one in PLN, but also perhaps the hardest to "put on steroid"
+maximizes it. That is for all X in [0, k]
+
+```
+    choose k X            choose k (k*x/n)
+------------------ <= ------------------------
+choose (k+n) (X+x)    choose (k+n) ((k*x/n)+x)
+```
+
+which is equivalent to
+
+```
+     k!/(X!(k-X)!)                   k!/((k*x/n)!(k-k*x/n)!)
+------------------------- <= -------------------------------------
+(k+n)!/((X+x)!(k+n-X-x)!)    (k+n)!/(((k*x/n)+x)!(k+n-(k*x/n)-x)!)
+```
+
+equivalent to
+
+```
+(X+x)!(k+n-X-x)!    ((k*x/n)+x)!(k+n-(k*x/n)-x)!
+---------------- <= ----------------------------
+    X!(k-X)!             (k*x/n)!(k-k*x/n)!
+```
+
+TODO: complete the proof (not very important though).
+
+## Deduction Using DTV
+
+We focus solely on the deduction rule for now. It is probably the most
+important one in PLN, but also one of the hardest to "put on steroid"
 because it has many premises, 5 in total, AB, BC, A, B, C.
 
 To obtain the DTV of a conclusion we
 
 1. Generate the DTV corresponding to each premises
-2. TODO: sample blahblah
+2. Sample the DTVs of all premises
+3. Check the consistency of the sampled probabilities
+4. If they are consistent, calculate the resulting strength using the
+   deduction formula. Use this value as sample of the DTV's
+   conclusion.
 
-TODO. See figures
+Note that for now sampling the DTV merely is done in brute force, just
+enumerating all discretized strengths weighted by their second order
+probabilities, thus the resulting strength is also weighted by the
+product of their second order probabilities.
+
+TODO: possibly implement Monte Carlos sampling.
 
 ![](plots/deduction-premises.png)
 ![](plots/deduction-conclusion.png)
 
-## STV on steroid
+## STV Inference on Steroid
+
+The idea of STV inference on steroid is to generate simple, efficient
+and hopefully accurate inference formulae over STVs based on DTVs
+internally. That may recall how modern digital mixing consoles work,
+performing internal signal processing in 48-bit while inputting and
+outputting signal in 24-bit.
+
+In detail, given a certain inference rule accompanied with its formula
+`f`, we would
 
 TODO
 
-## Further work
+## Further Work
 
 TODO (in brief):
 - [ ] Improve mode so that it returns the one closer to the mean if

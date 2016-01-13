@@ -112,8 +112,8 @@ main = do
     nAB = 400
     sBC = 0.9
     nBC = 500
-    k = defaultK
-    resolution = 200 -- defaultResolution       -- number of bins in the distribution
+    k = 10000 -- defaultK
+    resolution = 400 -- defaultResolution       -- number of bins in the distribution
 
   -- Calculate corresponding counts
   let

@@ -381,18 +381,77 @@ would
 
 ## Further Work
 
-In brief:
+Here's a description of the work that remains to be done, in more or
+less the right order to go about them.
 
-- [ ] Improve mode so that it returns the one closer to the mean if
-  there are several, or maybe return the average of the modes
-- [ ] Look at whether the width of the DTV increases w.r.t. k
-- [ ] STV inference on steroid
-- [ ] Re-implement C++ double sampling in Haskell and compare with
-  current single sampling results
-- [ ] Try to make sense of Chapter 7 on distributional TV inference.
-- [ ] Implement Monte-Carlos instead of full
-  convolution. Alternatively, make discretization merge bins with too
-  low probability (better than trimming).
+### Improve mode estimation
+
+Naively computing the mode of a sampled distribution (picking up the
+most frequent one) is lot less robust than the mean (averaging). I
+noticed that this leads to more jitter and bad fits than using the
+mean. Yet the mode clearly is the statistics corresponding to the
+strength of the corresponding STV.
+
+To improve that one may either improve the mode estimation, I suspect
+there exist some math that can do that. One way would probably to try
+to fit a beta distribution and use it's estimated mode. The other
+option could be to use the mean when the std deviation is sufficiently
+narrow (in fact there might just be a formula relating the mode, the
+mean and standard deviation of a beta distribution that could be used,
+see the end of the README.md in the messy Section Maxima).
+
+### Make discretization have a varying step-size
+
+So far the discretization has a constant step-size `1/resolution`. We
+could make it more efficient, with larger step-sizes for low
+probability regions, and shorter step-size for high probability
+regions. This would increase the resolution where it matters and speed
+up formula computation.
+
+### Implement Monte-Carlos simulation instead of full convolution
+
+So far the DTV of a conclusion is calculated by combining virtually
+all consistent discretized strengths, which is very costly.
+
+Instead on may perform Monte-Carlos simulations, i.e. using second
+order probability of a strength as the probability to pick it up.
+
+### Try to make sense of Chapter 7 on distributional TV inference
+
+In Section 7.2. of the PLN book it is explained how to use matrix
+product and matrix inversion to perform DTV deduction and inversion. I
+can't honnestly make sense of it. I supposed it is not contradictory
+with the approach implemented here so far, but it feels it could
+simplify and and possibly optimize computation a lot. So understanding
+that part and implementing it here would be a must.
+
+### Re-implement C++ double sampling in Haskell and compare
+
+The obsolete C++ PLN uses a double sampling of beta distributions to
+generate the DTVs. The code has been removed a long while ago but can
+be found in the opencog git repository under the tag
+`obsolete-C++-PLN`, under the directory `opencog/reasoning/pln`. It
+would interesting to reimplement the idea here and compare it with
+current single sampling approach.
+
+### Estimate rate of DTV widening w.r.t. the lookahead
+
+The PLN book seems to imply that the indefinite intervals tend to
+widen at a more rapid rate if k, the lookahead, is large. It would be
+interesting to verify that firt hand. For that we would just chain n-1
+inference steps using the conclusions of the previous steps as
+premises of the following steps and calculate w1/wn, where w1
+corresponds to the standard deviation of the premise (or it's average
+if there are more than one premise) of step 1, and wn would correspond
+to the standard deviation of the conclusion of the last step.
+
+We would obtain an average of multiple inferences of w1/wn varying the
+STV of the initial premises, then look at how mean(w1/wn) varies
+w.r.t. k.
+
+### Implement STV inference on steroid
+
+See Section STV Inference on Steriod for the details
 
 Maxima
 ------

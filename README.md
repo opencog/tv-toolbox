@@ -451,7 +451,7 @@ w.r.t. k.
 
 ### Implement STV inference on steroid
 
-See Section STV Inference on Steriod for the details
+See Section STV Inference on Steriod for the details.
 
 Maxima
 ------

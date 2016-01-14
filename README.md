@@ -388,17 +388,21 @@ less the right order to go about them.
 
 Naively computing the mode of a sampled distribution (picking up the
 most frequent one) is lot less robust than the mean (averaging). I
-noticed that this leads to more jitter and bad fits than using the
-mean. Yet the mode clearly is the statistics corresponding to the
-strength of the corresponding STV.
+noticed that this leads to more jitters and bader fits than using the
+mean when the distribution is narrow. Yet the mode clearly is the
+correct statistics for the strength of the corresponding STV.
 
-To improve that one may either improve the mode estimation, I suspect
-there exist some math that can do that. One way would probably to try
-to fit a beta distribution and use it's estimated mode. The other
-option could be to use the mean when the std deviation is sufficiently
-narrow (in fact there might just be a formula relating the mode, the
-mean and standard deviation of a beta distribution that could be used,
-see the end of the README.md in the messy Section Maxima).
+One way to improve that would probably to try to fit a beta
+distribution and use it's estimated mode, in fact there might just be
+a formula relating the mode, the mean and standard deviation of a beta
+distribution that could be used, see Subsection Relating parameters of
+a Beta distribution with its mean and mode. Note that one wouldn't
+need to compute the beta function at all, bypassing the beta function
+limited precision issue.
+
+The other simpler but less accurate option could be to use the mean as
+an estimate of the mode when the standard deviation is sufficiently
+low. But that's a bit of a hack, better go with the suggestion above.
 
 ### Make discretization have a varying step-size
 
@@ -453,28 +457,27 @@ w.r.t. k.
 
 See Section STV Inference on Steriod for the details.
 
-Maxima
-------
+# Maxima
 
-TODO
+Here's a record of some work done with Maxima, symbolic manipulations
+and plotting. Mostly trying to calculate and approach
 
+```math
+P(x+X successes in n+k trials | x successes in n trials)
 ```
-(n k) = 2^n / sqrt(1/2*n*pi) * exp(-(k-(n/2))^2 / n/2)
-```
 
-```c++
-////////////////////
-// Using binomial //
-////////////////////
+and see how far ahead we can go.
 
-// P(x+X successes in n+k trials | x successes in n trials)
-```
+## Using binomial coefficients
+
+Here's the maxima code to estimate the pdf of DTV using the binomial
+coefficients.
 
 ```maxima
 P(n, x, k, X) := ((n+1)*binomial(k, X)*binomial(n, x))
               / ((k+n+1)*binomial(k+n, X+x));
 ```
-```c++
+```
 // Using s=x/n and p=(x+X)/(n+k)
 //
 // s = x/n
@@ -498,24 +501,11 @@ pdf(n, s, p) = lim k->inf pdf_k(n, s, k, p)
 limit(pdf(n, s, k, p), k, inf);
 ```
 
-```c++
-//////////////////////////////////
-// Using binomial approximation //
-//////////////////////////////////
+## Using the Beta function
 
-// Shitty: when n is high and k is low, the approximation is really bad
-```
-```maxima
-binomial_approx(n, k) := 2^n / sqrt(1/2*n*%pi) * %e^(-(k-(n/2))^2/(n/2));
-P_approx(n, x, k, X) := ((n+1)*binomial_approx(k, X)*binomial_approx(n, x))
-                  / ((k+n+1)*binomial_approx(k+n, X+x));
-```
-
-```c++
-/////////////////////////
-// Using beta function //
-/////////////////////////
-```
+Same as above but the Beta function is used instead of the binomial
+coefficients. Maxima is able to perform some symbolic simplifications
+along the way.
 
 ```maxima
 binomial_beta(n, k) := 1 / ((n+1) * beta(n-k+1, k+1));
@@ -538,21 +528,39 @@ pdf_beta_k(n, s, k, p) := P_beta_prob(n, s, k, p) * (n+k);
 pdf_beta_condition_k(n, s, k, p) := P_beta_prob_condition(n, s, k, p) * (n+k);
 
 pdf_beta(n, s, p) = lim k->inf pdf_beta(n, s, k, p)
+```
 
-// Plotting
+## Approximating the binomial
+
+Given maxima limited large integer support we tried the following
+approximation
+https://en.wikipedia.org/wiki/Binomial_coefficient#Approximations
+
+```maxima
+binomial_approx(n, k) := 2^n / sqrt(1/2*n*%pi) * %e^(-(k-(n/2))^2/(n/2));
+P_approx(n, x, k, X) := ((n+1)*binomial_approx(k, X)*binomial_approx(n, x))
+                  / ((k+n+1)*binomial_approx(k+n, X+x));
+```
+
+turns out it is really bad, especially when n is high and k is
+low. Not worth redoing.
+
+## Some plotting commands
+
+```maxima
 plot3d(pdf_beta_k(500, 0.3, k, p), [p, 0, 1], [k, 1, 500], [grid, 100, 100], [z, 0, 100]);
 plot3d(pdf_beta_k(100, 0.3, k, p), [p, 0, 1], [k, 1, 500], [grid, 100, 100], [z, 0, 100]);
 plot3d(pdf_beta_k(50, 0.3, k, p), [p, 0, 1], [k, 1, 500], [grid, 100, 100], [z, 0, 100]);
 plot3d(pdf_beta_k(10, 0.3, k, p), [p, 0, 1], [k, 1, 500], [grid, 100, 100], [z, 0, 100]);
 plot3d(pdf_beta_k(5, 0.3, k, p), [p, 0, 1], [k, 1, 500], [grid, 100, 100], [z, 0, 100]);
 plot3d(pdf_beta_k(n, 0.3, 500, p), [p, 0, 1], [n, 1, 500], [grid, 100, 100], [z, 0, 100]);
-
-// Typical b
-b = 0.9
 ```
 
-Alpha and beta parameter of a Beta distribution using mean and mode
--------------------------------------------------------------------
+# Others
+
+## Relating parameters of a Beta distribution with its mean and mode
+
+This may turn out to be handy.
 
 ```math
 mean = alpha / (alpha + beta)
@@ -577,3 +585,7 @@ alpha = ((2*mode-1) * (mode - mean)) / (mode^2*mean)
 beta = ((2*mode-1) * (mode - mean)) / (mode^2*mean) * (1/mean - 1)
 beta = - ((mean - 1) (mode - mean) (2*mode - 1)) / (mean^2*mode^2)
 ```
+
+TODO: Do the same for the standard deviation. The mean and standard
+deviation are rather robust statistics, so this could be then handy
+for estimating the mode given the beta function parameters.

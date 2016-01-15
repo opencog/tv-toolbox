@@ -12,6 +12,7 @@ module TVToolBox (-- Types
                   showDist,
                   plotDists,
                   -- Simple TV
+                  confidenceToCount,
                   strengthToCount,
                   -- Distributional TV
                   genDist,

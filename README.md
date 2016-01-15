@@ -412,6 +412,18 @@ probability regions, and shorter step-size for high probability
 regions. This would increase the resolution where it matters and speed
 up formula computation.
 
+### Optimize STV to DTV for very high counts
+
+When the count of an STV is very high, that is corresponding to a
+confidence that approaches 1.0, calculating the binomial and thus the
+probability distribution takes a very long time (about 10 minutes for
+n=4M and k=10K). It would be good to optimize that. Clearly when a
+distribution is so narrow you don't need as many datapoints as
+k. Maybe this could be sampled. Alternatively the binomial itself
+could be approximated and optimized. In the same vein it would be
+useful to have a very efficient and accurate gamma or beta functions,
+possibly replacing the need for an exact binomial.
+
 ### Implement Monte-Carlos simulation instead of full convolution
 
 So far the DTV of a conclusion is calculated by combining virtually

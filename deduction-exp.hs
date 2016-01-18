@@ -182,11 +182,11 @@ main = do
     nACguess = min nAB nBC
     optimizeCount f = optimizeDbg f integerMiddle 20 nAClow nACup nACguess
 
-    -- Using sqrt JSD as metric
-    nToSqrtJsd n = sqrtJsd (genTrim meanForCountSearch n) hACnorm
-    memNToSqrtJsd = memoize nToSqrtJsd
-    !nAC = optimizeCount memNToSqrtJsd
-    !hACstv = genTrim sAC nAC
+    -- -- Using sqrt JSD as metric
+    -- nToSqrtJsd n = sqrtJsd (genTrim meanForCountSearch n) hACnorm
+    -- memNToSqrtJsd = memoize nToSqrtJsd
+    -- !nAC = optimizeCount memNToSqrtJsd
+    -- !hACstv = genTrim sAC nAC
 
     -- Using std dev distance as metric
     stdDevAC = stdDev hACnorm
@@ -196,12 +196,12 @@ main = do
     !hACStdDevStv = genTrim sAC nACStdDev
 
     -- -- Using U-L distance as metric
-    b = 0.9
-    widthAC = indefiniteIntervalWidth b hACnorm
-    nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim meanForCountSearch n)) - widthAC)
-    memNToWidthDiff = memoize nToWidthDiff
-    !nACWidth = optimizeCount memNToWidthDiff
-    !hACWidthStv = genTrim sAC nACWidth
+    -- b = 0.9
+    -- widthAC = indefiniteIntervalWidth b hACnorm
+    -- nToWidthDiff n =  abs ((indefiniteIntervalWidth b (genTrim meanForCountSearch n)) - widthAC)
+    -- memNToWidthDiff = memoize nToWidthDiff
+    -- !nACWidth = optimizeCount memNToWidthDiff
+    -- !hACWidthStv = genTrim sAC nACWidth
 
   -- Plot the distributions using only StdDev metric
   plotDists

@@ -159,14 +159,12 @@ main = do
 
   -- Compute the result of deduction
   let
-    !hACraw = fullDeduction hA hB hC hAB hBC
-    !hAC = trimDis hACraw
-  putStrLn ("hACraw: " ++ (showDist hACraw))
+    !hAC = fullDeduction hA hB hC hAB hBC
   putStrLn ("hAC: " ++ (showDist hAC))
 
   -- Normalize the distribution
   let
-    !hACnorm = normalize hAC
+    !hACnorm = (trimDis . normalize) hAC
   putStrLn ("hACnorm: " ++ (showDist hACnorm))
 
   -- Find the resulting distribution count

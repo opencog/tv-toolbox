@@ -198,7 +198,7 @@ average hP hQ = scale 0.5 (add hP hQ)
 
 -- Return the nearest (lower) bin corresponding to a strength
 bin :: Integer -> MyFloat -> MyFloat
-bin n s = fromRational ((floor (s * (fromInteger n))) % n)
+bin n s = fromRational ((round (s * (fromInteger n))) % n)
 
 -- Turn a multi-distribution into a distribution (sum up the
 -- duplicated probabilities).

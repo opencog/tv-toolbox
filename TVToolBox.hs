@@ -23,6 +23,7 @@ module TVToolBox (-- Types
                   prob_only_beta,
                   pdf_beta,
                   pdf_only_beta,
+                  pdf_chapter_4,
                   toDist,
                   discretize,
                   trim,
@@ -285,6 +286,13 @@ pdf_only_beta :: Integer -> MyFloat -> Integer -> MyFloat -> MyFloat
 pdf_only_beta n s k p = (nreal + kreal) * prob_only_beta n s k p
   where nreal = fromInteger n
         kreal = fromInteger k
+
+-- Compute the pdf using directly the formula in chapter 4
+pdf_chapter_4 :: Integer -> Integer -> MyFloat -> MyFloat
+pdf_chapter_4 n x a = (nreal+1) * binom_n_x * a**xreal * (1-a)**(nreal-xreal)
+    where binom_n_x = fromInteger (choose n x)
+          nreal = fromInteger n
+          xreal = fromInteger x
 
 -- Little function to compute the probability corresponding to cx
 cx2p :: Integer -> MyFloat -> Integer -> Integer -> MyFloat

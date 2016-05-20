@@ -601,3 +601,23 @@ beta = - ((mean - 1) (mode - mean) (2*mode - 1)) / (mean^2*mode^2)
 TODO: Do the same for the standard deviation. The mean and standard
 deviation are rather robust statistics, so this could be then handy
 for estimating the mode given the beta function parameters.
+
+## NOTES
+
+X = a*k
+
+(n+k) * (n + 1) * (k! / (X! (k-X)!) * (n! / x! (n-x)!)
+------------------------------------------------------
+      (k+n+1) ((k+n)! / ((X+x)! (k+n-X-x)!)
+
+(n+k) * (n + 1) * (k! / (ak! (k-ak)!) * (n! / x! (n-x)!)
+------------------------------------------------------
+      (k+n+1) ((k+n)! / ((ak+x)! (k+n-ak-x)!)
+
+                    (n+k) * (n + 1) * (k! / (ak! (k-ak)!) * (n! / x! (n-x)!)
+pdf?(p=a) = k->inf ---------------------------------------------------------
+                            (k+n+1) ((k+n)! / ((ak+x)! (k+n-ak-x)!)
+
+f(p=a) = (n x)p^x*(1-p)^(n-x)
+
+pdf(p=a) == f(p=a)

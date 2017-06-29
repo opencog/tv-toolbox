@@ -287,7 +287,8 @@ pdf_only_beta n s k p = (nreal + kreal) * prob_only_beta n s k p
   where nreal = fromInteger n
         kreal = fromInteger k
 
--- Compute the pdf using directly the formula in chapter 4
+-- Compute the pdf using directly the formula in chapter 4, equation (2)
+-- pdf_n_x(a) = (n+1) * (choose n x) * a^x * (1-a)^(n-x)
 pdf_chapter_4 :: Integer -> Integer -> MyFloat -> MyFloat
 pdf_chapter_4 n x a = (nreal+1) * binom_n_x * a**xreal * (1-a)**(nreal-xreal)
     where binom_n_x = fromInteger (choose n x)
